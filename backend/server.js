@@ -3,9 +3,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pageRoutes from './routes/pages.routes.js';
 import aiRouter from './routes/ai.routes.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
-const PORT = 3080;
+const PORT = 3001;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
