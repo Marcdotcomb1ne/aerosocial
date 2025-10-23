@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pageRoutes from './routes/pages.routes.js';
+import aiRouter from './routes/ai.routes.js';
 
 const app = express();
 const PORT = 3080;
@@ -16,6 +17,7 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Configuração das Rotas
 app.use(pageRoutes);
+app.use('/api/ai', aiRouter);
 
 app.listen(PORT, () => {
     console.log(`✅  Server is running in http://localhost:${PORT}`);
