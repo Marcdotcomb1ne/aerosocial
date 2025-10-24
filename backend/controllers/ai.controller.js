@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import fetch from 'node-fetch';
 
 const systemStreamPrompt = `Você é um narrador de futebol AO VIVO, transmitindo uma partida em tempo real.
 
@@ -46,12 +46,6 @@ EXEMPLO DE SAÍDA:
 
 Quando o usuário pedir para começar, inicie a narração!`;
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-exp",
-    systemInstruction: systemStreamPrompt,
-});
-
 export const handleChatRequest = async (req, res) => {
     const { userMessage, conversationHistory } = req.body;
 
@@ -59,6 +53,13 @@ export const handleChatRequest = async (req, res) => {
         return res.status(400).json({ message: 'Nenhuma mensagem fornecida.' });
     }
 
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+        return res.status(500).json({ message: 'API Key não configurada' });
+    }
+
+    // Configurar SSE
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -66,36 +67,101 @@ export const handleChatRequest = async (req, res) => {
     });
 
     try {
-        let history = [];
+        // Preparar conteúdo com system instruction
+        const contents = [
+            {
+                role: 'user',
+                parts: [{ text: systemStreamPrompt }]
+            },
+            {
+                role: 'model',
+                parts: [{ text: 'Entendido! Estou pronto para narrar partidas de futebol ao vivo.' }]
+            }
+        ];
+
+        // Adicionar histórico se existir
         if (conversationHistory && Array.isArray(conversationHistory)) {
-            history = conversationHistory;
+            const validHistory = conversationHistory.filter((item, index) => {
+                // Pular primeiros itens se forem do system prompt
+                if (index < 2) return false;
+                return item.role === 'user' || item.role === 'model';
+            });
+            contents.push(...validHistory);
         }
 
-        const chat = model.startChat({
-            history: history,
-            generationConfig: {
-                temperature: 0.9,
-                topK: 40,
-                topP: 0.95,
+        // Adicionar mensagem atual
+        contents.push({
+            role: 'user',
+            parts: [{ text: userMessage }]
+        });
+
+        // Usar API v1 com streamGenerateContent
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:streamGenerateContent?key=${apiKey}&alt=sse`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: contents,
+                generationConfig: {
+                    temperature: 0.9,
+                    topK: 40,
+                    topP: 0.95,
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API Error: ${response.status} - ${errorText}`);
+        }
+
+        // Ler stream
+        const reader = response.body;
+        let buffer = '';
+
+        reader.on('data', (chunk) => {
+            buffer += chunk.toString();
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    
+                    try {
+                        const parsed = JSON.parse(data);
+                        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                        
+                        if (text) {
+                            const eventLines = text.split('\n').filter(l => l.trim());
+                            
+                            for (const eventLine of eventLines) {
+                                res.write(`data: ${JSON.stringify({ text: eventLine })}\n\n`);
+                            }
+                        }
+                    } catch (e) {
+                        // Ignorar erros de parse
+                    }
+                }
             }
         });
 
-        const result = await chat.sendMessageStream(userMessage);
+        reader.on('end', () => {
+            res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+            res.end();
+        });
 
-        for await (const chunk of result.stream) {
-            const chunkText = chunk.text();
-            
-            const lines = chunkText.split('\n').filter(line => line.trim() !== '');
-
-            for (const line of lines) {
-                res.write(`data: ${JSON.stringify({ text: line })}\n\n`);
-                
-                await new Promise(resolve => setTimeout(resolve, 50));
+        reader.on('error', (error) => {
+            console.error('Stream error:', error);
+            if (!res.writableEnded) {
+                res.write(`data: ${JSON.stringify({ error: 'Erro no stream' })}\n\n`);
+                res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+                res.end();
             }
-        }
-
-        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-        res.end();
+        });
 
     } catch (error) {
         console.error('Erro ao chamar a API da Gemini:', error.message);

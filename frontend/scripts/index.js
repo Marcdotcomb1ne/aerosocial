@@ -19,6 +19,7 @@ chatForm.addEventListener('submit', async (e) => {
     displayMessage(userMessage, 'user');
     messageInput.value = '';
 
+    // Mensagem de carregamento
     const loadingMessage = displayMessage('⚽ Preparando transmissão...', 'loading');
 
     isStreaming = true;
@@ -39,14 +40,17 @@ chatForm.addEventListener('submit', async (e) => {
             throw new Error('Erro na resposta do servidor.');
         }
 
+        // Remover mensagem de loading
         chatWindow.removeChild(loadingMessage);
 
+        // Criar container para os eventos da partida
         const eventContainer = document.createElement('div');
         eventContainer.classList.add('message', 'bot', 'event-stream');
         chatWindow.appendChild(eventContainer);
 
         let fullResponse = '';
 
+        // Ler o stream
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
@@ -78,9 +82,11 @@ chatForm.addEventListener('submit', async (e) => {
                         if (parsed.text) {
                             fullResponse += parsed.text + '\n';
                             
+                            // Adicionar evento ao container
                             const eventLine = document.createElement('div');
                             eventLine.classList.add('event-line');
                             
+                            // Detectar se é um gol para destacar
                             if (parsed.text.includes('GOL') || parsed.text.includes('GOOOL')) {
                                 eventLine.classList.add('goal-event');
                             }
@@ -88,6 +94,7 @@ chatForm.addEventListener('submit', async (e) => {
                             eventLine.textContent = parsed.text;
                             eventContainer.appendChild(eventLine);
 
+                            // Scroll suave
                             chatWindow.scrollTop = chatWindow.scrollHeight;
                         }
 
@@ -98,6 +105,7 @@ chatForm.addEventListener('submit', async (e) => {
             }
         }
 
+        // Atualizar histórico
         conversationHistory.push({ 
             role: 'user', 
             parts: [{ text: userMessage }] 
@@ -132,10 +140,5 @@ function displayMessage(message, sender) {
     return messageElement;
 }
 
-// Mensagem inicial
 displayMessage('⚽ Olá! Sou seu narrador de futebol ao vivo! Me diga quais times vão jogar e eu começo a transmissão!', 'bot');
 
-conversationHistory.push({
-    role: 'model',
-    parts: [{ text: '⚽ Olá! Sou seu narrador de futebol ao vivo! Me diga quais times vão jogar e eu começo a transmissão!' }]
-});
