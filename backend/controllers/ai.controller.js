@@ -10,6 +10,7 @@ REGRAS IMPORTANTES:
 - NÃO gere a partida inteira de uma vez
 - NÃO USE Markdown (sem asteriscos, crases, hashtags)
 - Use apenas texto puro
+- SEMPRE vá até o fim da partida. Não pare a mensagem
 
 ESTRUTURA DA PARTIDA:
 1. Pré-jogo (apresentação, escalações, clima)
@@ -32,7 +33,8 @@ TIPOS DE EVENTOS:
 ESTILO:
 - Seja empolgante mas realista
 - Varie os eventos (nem todo minuto tem lance)
-- Gols devem ser raros e emocionantes
+- Gols devem ser emocionantes
+- A quantidade de gols deve seguir as da vida real, a variar pela reputação dos times, mas zebras (resultados inesperados) podem acontecer
 - Use linguagem de narrador esportivo brasileiro
 
 EXEMPLO DE SAÍDA:
@@ -45,6 +47,8 @@ EXEMPLO DE SAÍDA:
 15' - Jogo fica mais truncado no meio-campo
 
 Quando o usuário pedir para começar, inicie a narração!`;
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const handleChatRequest = async (req, res) => {
     const { userMessage, conversationHistory } = req.body;
@@ -67,7 +71,6 @@ export const handleChatRequest = async (req, res) => {
     });
 
     try {
-        // Preparar conteúdo com system instruction
         const contents = [
             {
                 role: 'user',
@@ -79,23 +82,19 @@ export const handleChatRequest = async (req, res) => {
             }
         ];
 
-        // Adicionar histórico se existir
         if (conversationHistory && Array.isArray(conversationHistory)) {
             const validHistory = conversationHistory.filter((item, index) => {
-                // Pular primeiros itens se forem do system prompt
                 if (index < 2) return false;
                 return item.role === 'user' || item.role === 'model';
             });
             contents.push(...validHistory);
         }
 
-        // Adicionar mensagem atual
         contents.push({
             role: 'user',
             parts: [{ text: userMessage }]
         });
 
-        // Usar API v1 com streamGenerateContent
         const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:streamGenerateContent?key=${apiKey}&alt=sse`;
 
         const response = await fetch(url, {
@@ -118,11 +117,9 @@ export const handleChatRequest = async (req, res) => {
             throw new Error(`API Error: ${response.status} - ${errorText}`);
         }
 
-        // Ler stream
-        const reader = response.body;
+        
         let buffer = '';
-
-        reader.on('data', (chunk) => {
+        for await (const chunk of response.body) {
             buffer += chunk.toString();
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
@@ -140,28 +137,18 @@ export const handleChatRequest = async (req, res) => {
                             
                             for (const eventLine of eventLines) {
                                 res.write(`data: ${JSON.stringify({ text: eventLine })}\n\n`);
+                                
+                                await delay(2000); 
                             }
                         }
                     } catch (e) {
-                        // Ignorar erros de parse
                     }
                 }
             }
-        });
-
-        reader.on('end', () => {
-            res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-            res.end();
-        });
-
-        reader.on('error', (error) => {
-            console.error('Stream error:', error);
-            if (!res.writableEnded) {
-                res.write(`data: ${JSON.stringify({ error: 'Erro no stream' })}\n\n`);
-                res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-                res.end();
-            }
-        });
+        }
+        
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
 
     } catch (error) {
         console.error('Erro ao chamar a API da Gemini:', error.message);
