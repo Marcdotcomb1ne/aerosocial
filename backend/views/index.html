@@ -956,7 +956,11 @@
                                 }
 
                                 if (parsed.error) {
-                                    addMessage(`Erro: ${parsed.error}`, 'bot');
+                                    if (parsed.error.code = 429){
+                                        addMessage(`Erro: O site não tem mais tokens por hoje :(`, 'bot');
+                                    } else {
+                                        addMessage(`Erro: ${parsed.error}`, 'bot');
+                                    }
                                     break;
                                 }
 

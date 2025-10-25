@@ -85,6 +85,36 @@ Quando o usuário pedir para começar, inicie a narração!
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+//função para detectar se é modo carreira
+function isCareerMode(userMessage, conversationHistory) {
+    const message = userMessage.toLowerCase();
+    
+    //verifica se a mensagem atual menciona modo carreira
+    if (message.includes('modo carreira') || 
+        message.includes('minha carreira') || 
+        message.includes('iniciar carreira') ||
+        message.includes('começar carreira')) {
+        return true;
+    }
+    
+    //verifica se alguma mensagem anterior ativou o modo carreira
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+        for (const msg of conversationHistory) {
+            if (msg.role === 'user') {
+                const text = msg.parts?.[0]?.text?.toLowerCase() || '';
+                if (text.includes('modo carreira') || 
+                    text.includes('minha carreira') ||
+                    text.includes('iniciar carreira') ||
+                    text.includes('começar carreira')) {
+                    return true;
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
 export const handleChatRequest = async (req, res) => {
     const { userMessage, conversationHistory } = req.body;
 
@@ -98,7 +128,8 @@ export const handleChatRequest = async (req, res) => {
         return res.status(500).json({ message: 'API Key não configurada' });
     }
 
-    // Configurar SSE
+    const careerMode = isCareerMode(userMessage, conversationHistory);
+
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -152,31 +183,62 @@ export const handleChatRequest = async (req, res) => {
             throw new Error(`API Error: ${response.status} - ${errorText}`);
         }
 
-        
         let buffer = '';
-        for await (const chunk of response.body) {
-            buffer += chunk.toString();
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+        
+        if (careerMode) {
+            let fullText = '';
+            
+            for await (const chunk of response.body) {
+                buffer += chunk.toString();
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
 
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    
-                    try {
-                        const parsed = JSON.parse(data);
-                        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
                         
-                        if (text) {
-                            const eventLines = text.split('\n').filter(l => l.trim());
+                        try {
+                            const parsed = JSON.parse(data);
+                            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
                             
-                            for (const eventLine of eventLines) {
-                                res.write(`data: ${JSON.stringify({ text: eventLine })}\n\n`);
-                                
-                                await delay(2000); 
+                            if (text) {
+                                fullText += text;
                             }
+                        } catch (e) {
                         }
-                    } catch (e) {
+                    }
+                }
+            }
+            
+            if (fullText.trim()) {
+                res.write(`data: ${JSON.stringify({ text: fullText.trim() })}\n\n`);
+            }
+            
+        } else {
+            for await (const chunk of response.body) {
+                buffer += chunk.toString();
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        
+                        try {
+                            const parsed = JSON.parse(data);
+                            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                            
+                            if (text) {
+                                const eventLines = text.split('\n').filter(l => l.trim());
+                                
+                                for (const eventLine of eventLines) {
+                                    res.write(`data: ${JSON.stringify({ text: eventLine })}\n\n`);
+                                    
+                                    await delay(2000);
+                                }
+                            }
+                        } catch (e) {
+                        }
                     }
                 }
             }
