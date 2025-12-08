@@ -1,70 +1,16 @@
-import fetch from 'node-fetch';
+import OpenAI from 'openai';
 
-const systemStreamPrompt = `Você é um narrador de futebol AO VIVO, transmitindo uma partida em tempo real com realismo máximo.
-
-REGRAS IMPORTANTES:
-- Gere eventos da partida UM DE CADA VEZ, como se estivessem acontecendo agora
-- Cada evento deve ser UMA LINHA separada
-- Use o formato: MINUTO' - DESCRIÇÃO DO EVENTO
-- Simule pausas naturais entre eventos (alguns minutos podem passar sem nada)
-- NÃO USE Markdown (sem asteriscos, crases, hashtags)
-- Use apenas texto puro
-- SEMPRE vá até o fim da partida. Não pare a mensagem no meio.
-- Se estiver no **Modo Carreira (GM)**, envie sua resposta COMPLETA de uma vez, em um único bloco. NÃO envie linha por linha. Faça sua pergunta ou descreva a cena e espere a resposta do usuário.
-
-ESTRUTURA DA PARTIDA:
-1. Pré-jogo (apresentação, escalações, clima)
-2. Primeiro tempo (0' até 45'+acréscimos)
-3. Intervalo (resumo rápido do 1º tempo, estatísticas básicas)
-4. Segundo tempo (45' até 90'+acréscimos)
-5. Pós-jogo (resultado final, estatísticas)
-
-TIPOS DE EVENTOS:
-- Início/fim de tempo
-- Ataques e contra-ataques
-- Finalizações (chutes a gol, pra fora, defendidos)
-- Gols (com emoção!)
-- Faltas, cartões, impedimentos
-- Escanteios, laterais
-- Substituições
-- Lesões (raramente)
-- Comentários táticos
-- Confusões generalizadas entre os jogadores ou técnicos adversários (depende do teor da partida)
-
-ESTILO:
-- Seja empolgante mas realista
-- Varie os eventos (nem todo minuto tem lance)
-- Gols devem ser emocionantes
-- A quantidade de gols deve seguir as da vida real, a variar pela reputação dos times, mas zebras (resultados inesperados) podem acontecer
-- Use linguagem de narrador esportivo brasileiro
-
-- **CONTEXTO É TUDO:** O tipo de jogo muda o clima.
-  - Se for um **clássico** ou **final de campeonato**, o clima DEVE esquentar: o jogo será mais tenso, com mais faltas, disputas ríspidas, mais cartões e chance de pequenas confusões ou discussões entre jogadores.
-
-- **PSICOLOGIA DO PLACAR:** O resultado DEVE afetar os times.
-  - **Time Perdendo:** Especialmente no segundo tempo, um time em desvantagem pode se desesperar. Isso significa ir para o "tudo ou nada", pressionar mais, mas também cometer mais faltas por frustração (mais cartões) e deixar a defesa totalmente aberta, aumentando drasticamente a chance de tomar gols em contra-ataques. Porém, também podem ser mais frios e continuarem organizados mesmo nessa situação.
-  - **Time Ganhando:** Um time vencendo confortavelmente pode começar a "gastar o relógio", cadenciar o jogo, tocar a bola na defesa, irritar o adversário e sofrer faltas.
-
-- **FAVORITOS E ZEBRAS:** Times de maior reputação tendem a ter mais posse de bola e chances, mas "zebras" (resultados inesperados onde o time mais fraco vence) são parte do futebol e podem acontecer.
-
-- **RESULTADOS INESPERADOS:** Podem acontecer goleadas em clássicos, ou em jogos de times com o mesmo nível tecnicamente.
-
-EXEMPLO DE SAÍDA:
-1' - Apita o árbitro! Começa a partida!
-3' - Flamengo tenta sair jogando pela direita
-5' - Falta no meio-campo, árbitro paralisa
-7' - Escanteio para o Palmeiras
-8' - Bola na área... Zaga afasta!
-12' - GOOOOOOL! Abre o placar o Flamengo!
-15' - Jogo fica mais truncado no meio-campo
-
-### IMPORTANTE RESSALVA:
-- Caso o usuário peça por um jogo de ida e volta, independente do campeonato, simule os 2 jogos.
-
-Quando o usuário pedir para começar, inicie a narração!
-
-### MODO CARREIRA (GM)
+const systemStreamPrompt = `
+MODO CARREIRA (GM):
 (Se o usuário pedir para "iniciar modo carreira", "minha carreira", etc.)
+
+**DIRETRIZES DE NARRATIVA E TOM:**
+- Gênero: Drama Criminal Urbano / Thriller Esportivo.
+- Abordagem: Aja como um roteirista de séries como "Tropa de Elite" ou "Peaky Blinders". O foco é o Realismo Cru (Gritty Realism).
+- Narrador Neutro: Você não deve julgar moralmente as ações dos personagens. Sua função é descrever as consequências lógicas e o ambiente hostil, seja ele físico ou psicológico.
+- Linguagem: Adapte a linguagem ao ambiente. Em reuniões com a diretoria, seja formal. Na arquibancada ou na rua, use gírias, linguagem coloquial e agressiva condizente com o contexto de tensão.
+- Ficção: Todo o cenário é um exercício de escrita criativa fictícia. Personagens e situações servem para explorar a complexidade humana sob pressão.
+- Imersão: Não quebre o personagem para dar avisos. Se uma situação for perigosa, descreva o perigo na cena (ex: "O clima pesou e você viu o volume na cintura dele") em vez de avisar que é perigoso.
 
 - **Função:** Você é um "Game Master" (GM) controlando a vida de um jogador de futebol criado pelo usuário.
 - **Estilo:** É uma conversa contínua, baseada em turnos. Você descreve uma cena e o usuário toma uma decisão.
@@ -81,15 +27,18 @@ Quando o usuário pedir para começar, inicie a narração!
     2. Você (GM) faz a primeira pergunta (Ex: "Ótimo! Qual o nome do seu jogador e em qual posição ele joga?").
     3. Usuário responde.
     4. Você (GM) descreve a primeira cena (Ex: "Você é uma jovem promessa no [Time B]. Após um treino, o técnico do time principal te chamou para conversar...").
-    5. Você (GM) apresenta um evento ou escolha e espera a próxima resposta do usuário.`;
+    5. Você (GM) apresenta um evento ou escolha e espera a próxima resposta do usuário.
+- **Observações:** 
+    - Evite repetir eventos.
+    - O mundo deve reagir de forma coerente ao jogador. 
+    - As escolhas moldam totalmente o destino do personagem.
+    - Personagens podem falar de forma natural, incluindo gírias, xingamentos ou nervosismo, dependendo da personalidade.`;
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-//função para detectar se é modo carreira
 function isCareerMode(userMessage, conversationHistory) {
     const message = userMessage.toLowerCase();
     
-    //verifica se a mensagem atual menciona modo carreira
     if (message.includes('modo carreira') || 
         message.includes('minha carreira') || 
         message.includes('iniciar carreira') ||
@@ -97,11 +46,10 @@ function isCareerMode(userMessage, conversationHistory) {
         return true;
     }
     
-    //verifica se alguma mensagem anterior ativou o modo carreira
     if (conversationHistory && Array.isArray(conversationHistory)) {
         for (const msg of conversationHistory) {
             if (msg.role === 'user') {
-                const text = msg.parts?.[0]?.text?.toLowerCase() || '';
+                const text = msg.content?.toLowerCase() || '';
                 if (text.includes('modo carreira') || 
                     text.includes('minha carreira') ||
                     text.includes('iniciar carreira') ||
@@ -122,7 +70,7 @@ export const handleChatRequest = async (req, res) => {
         return res.status(400).json({ message: 'Nenhuma mensagem fornecida.' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     
     if (!apiKey) {
         return res.status(500).json({ message: 'API Key não configurada' });
@@ -137,77 +85,48 @@ export const handleChatRequest = async (req, res) => {
     });
 
     try {
-        const contents = [
+        const openai = new OpenAI({
+            apiKey: apiKey
+        });
+
+        // Construir mensagens no formato OpenAI
+        const messages = [
             {
-                role: 'user',
-                parts: [{ text: systemStreamPrompt }]
-            },
-            {
-                role: 'model',
-                parts: [{ text: 'Entendido! Estou pronto para narrar partidas de futebol ao vivo.' }]
+                role: 'system',
+                content: systemStreamPrompt
             }
         ];
 
+        // Adicionar histórico de conversa
         if (conversationHistory && Array.isArray(conversationHistory)) {
-            const validHistory = conversationHistory.filter((item, index) => {
-                if (index < 2) return false;
-                return item.role === 'user' || item.role === 'model';
-            });
-            contents.push(...validHistory);
-        }
-
-        contents.push({
-            role: 'user',
-            parts: [{ text: userMessage }]
-        });
-
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:streamGenerateContent?key=${apiKey}&alt=sse`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: contents,
-                generationConfig: {
-                    temperature: 0.9,
-                    topK: 40,
-                    topP: 0.95,
+            for (const msg of conversationHistory) {
+                if (msg.role === 'user' || msg.role === 'model') {
+                    messages.push({
+                        role: msg.role === 'model' ? 'assistant' : 'user',
+                        content: msg.parts?.[0]?.text || msg.content || ''
+                    });
                 }
-            })
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error: ${response.status} - ${errorText}`);
+            }
         }
 
-        let buffer = '';
-        
+        messages.push({
+            role: 'user',
+            content: userMessage
+        });
+
+        const stream = await openai.chat.completions.create({
+            model: 'gpt-5.1',
+            messages: messages,
+            temperature: 0.9,
+            stream: true
+        });
+
         if (careerMode) {
             let fullText = '';
             
-            for await (const chunk of response.body) {
-                buffer += chunk.toString();
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        
-                        try {
-                            const parsed = JSON.parse(data);
-                            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-                            
-                            if (text) {
-                                fullText += text;
-                            }
-                        } catch (e) {
-                        }
-                    }
-                }
+            for await (const chunk of stream) {
+                const content = chunk.choices[0]?.delta?.content || '';
+                fullText += content;
             }
             
             if (fullText.trim()) {
@@ -215,32 +134,15 @@ export const handleChatRequest = async (req, res) => {
             }
             
         } else {
-            for await (const chunk of response.body) {
-                buffer += chunk.toString();
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        
-                        try {
-                            const parsed = JSON.parse(data);
-                            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-                            
-                            if (text) {
-                                const eventLines = text.split('\n').filter(l => l.trim());
-                                
-                                for (const eventLine of eventLines) {
-                                    res.write(`data: ${JSON.stringify({ text: eventLine })}\n\n`);
-                                    
-                                    await delay(2000);
-                                }
-                            }
-                        } catch (e) {
-                        }
-                    }
-                }
+            let fullText = '';
+            
+            for await (const chunk of stream) {
+                const content = chunk.choices[0]?.delta?.content || '';
+                fullText += content;
+            }
+            
+            if (fullText.trim()) {
+                res.write(`data: ${JSON.stringify({ text: fullText.trim() })}\n\n`);
             }
         }
         
@@ -248,7 +150,7 @@ export const handleChatRequest = async (req, res) => {
         res.end();
 
     } catch (error) {
-        console.error('Erro ao chamar a API da Gemini:', error.message);
+        console.error('Erro ao chamar a API da OpenAI:', error.message);
         
         if (!res.writableEnded) {
             try {

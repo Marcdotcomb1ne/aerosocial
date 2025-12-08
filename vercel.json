@@ -6,6 +6,9 @@
       "use": "@vercel/node"
     }
   ],
+  "git": {
+    "deploymentEnabled": false
+  },
   "routes": [
     {
       "src": "/(.*)",
