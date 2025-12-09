@@ -1,34 +1,20 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
 const SOUNDTRACKS = {
-  action: [
-    '/assets/soundtrack/lutarpeloquemeu.mp3'
-  ],
-  drama: [
-    '/assets/soundtrack/unlimitedsky.mp3'
-  ],
-  suspense: [
-    '/assets/soundtrack/umbomlugar.mp3'
-  ],
-  neutral: [
-    '/assets/soundtrack/shecouldnt.mp3'
-  ]
+  action: ['/assets/soundtrack/lutarpeloquemeu.mp3'],
+  drama: ['/assets/soundtrack/unlimitedsky.mp3'],
+  suspense: ['/assets/soundtrack/umbomlugar.mp3'],
+  neutral: ['/assets/soundtrack/shecouldnt.mp3']
 };
 
 const IMAGE_KEYWORDS = {
-  action: [
-    'action', 'fight', 'brazil favela', 'urban warfare', 'gun battle'
-  ],
-  drama: [
-    'dark alley', 'rainy street', 'crying'
-  ],
-  suspense: [
-    'mysterious room', 'empty office'
-  ],
-  neutral: [
-    'soccer pitch', 'soccer training center'
-  ]
+  action: ['action', 'fight', 'brazil favela', 'urban warfare', 'gun battle'],
+  drama: ['dark alley', 'rainy street', 'crying'],
+  suspense: ['mysterious room', 'empty office'],
+  neutral: ['soccer pitch', 'soccer training center']
 };
+
+const MAX_TTS_LENGTH = 4500;
 
 function detectContext(message) {
   const lower = message.toLowerCase();
@@ -74,6 +60,47 @@ function estimateDuration(text) {
   return Math.ceil(words / 2.5);
 }
 
+function splitTextIntoParts(text, maxLength = MAX_TTS_LENGTH) {
+  if (text.length <= maxLength) {
+    return [text];
+  }
+
+  const parts = [];
+  let remainingText = text;
+
+  while (remainingText.length > 0) {
+    if (remainingText.length <= maxLength) {
+      parts.push(remainingText.trim());
+      break;
+    }
+
+    let splitIndex = remainingText.lastIndexOf('. ', maxLength);
+    
+    if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
+      splitIndex = remainingText.lastIndexOf('\n', maxLength);
+    }
+    
+    if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
+      splitIndex = remainingText.lastIndexOf(', ', maxLength);
+    }
+    
+    if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
+      splitIndex = remainingText.lastIndexOf(' ', maxLength);
+    }
+    
+    if (splitIndex === -1) {
+      splitIndex = maxLength;
+    }
+
+    const part = remainingText.substring(0, splitIndex + 1).trim();
+    parts.push(part);
+    
+    remainingText = remainingText.substring(splitIndex + 1).trim();
+  }
+
+  return parts;
+}
+
 async function getContextualImage(context) {
   try {
     const keyword = selectImageKeyword(context);
@@ -115,16 +142,20 @@ async function getContextualImage(context) {
 
 export const generateElevenLabsAudio = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, partIndex = 0 } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
     }
     
+    // Divide o texto em partes
+    const textParts = splitTextIntoParts(message);
+    const currentPart = textParts[partIndex];
+    
     const context = detectContext(message);
     const soundtrack = selectSoundtrack(context);
     
-    const contextImage = await getContextualImage(context);
+    const contextImage = partIndex === 0 ? await getContextualImage(context) : null;
     
     const elevenlabs = new ElevenLabsClient({
       apiKey: process.env.ELEVENLABS_API_KEY
@@ -132,12 +163,12 @@ export const generateElevenLabsAudio = async (req, res) => {
     
     const VOICE_ID = 'Zk0wRqIFBWGMu2lIk7hw';
     
-    console.log('Gerando áudio com ElevenLabs SDK...');
+    console.log(`Gerando áudio - Parte ${partIndex + 1} de ${textParts.length}...`);
     
     const audio = await elevenlabs.textToSpeech.convert(
       VOICE_ID,
       {
-        text: message,
+        text: currentPart,
         model_id: 'eleven_multilingual_v2',
         voice_settings: {
           stability: 0.7,
@@ -162,8 +193,13 @@ export const generateElevenLabsAudio = async (req, res) => {
       audioBase64,
       soundtrack,
       context,
-      duration: estimateDuration(message),
-      contextImage
+      duration: estimateDuration(currentPart),
+      contextImage,
+      currentPart: partIndex,
+      totalParts: textParts.length,
+      hasMoreParts: partIndex < textParts.length - 1,
+      currentText: currentPart,
+      fullText: message
     });
     
   } catch (error) {
@@ -177,16 +213,21 @@ export const generateElevenLabsAudio = async (req, res) => {
 
 export const generateCinematicAudio = async (req, res) => {
   try {
-    const { message, voiceId = 'pt-BR-Wavenet-B' } = req.body;
+    const { message, partIndex = 0, voiceId = 'pt-BR-Wavenet-B' } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
     }
     
+    const textParts = splitTextIntoParts(message);
+    const currentPart = textParts[partIndex];
+    
     const context = detectContext(message);
     const soundtrack = selectSoundtrack(context);
     
-    const contextImage = await getContextualImage(context);
+    const contextImage = partIndex === 0 ? await getContextualImage(context) : null;
+    
+    console.log(`Gerando áudio Google TTS - Parte ${partIndex + 1} de ${textParts.length}...`);
     
     const ttsResponse = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
       method: 'POST',
@@ -195,7 +236,7 @@ export const generateCinematicAudio = async (req, res) => {
         'X-Goog-Api-Key': process.env.GOOGLE_TTS_API_KEY
       },
       body: JSON.stringify({
-        input: { text: message },
+        input: { text: currentPart },
         voice: {
           languageCode: 'pt-BR',
           name: voiceId,
@@ -220,8 +261,13 @@ export const generateCinematicAudio = async (req, res) => {
       audioBase64: ttsData.audioContent,
       soundtrack,
       context,
-      duration: estimateDuration(message),
-      contextImage
+      duration: estimateDuration(currentPart),
+      contextImage,
+      currentPart: partIndex,
+      totalParts: textParts.length,
+      hasMoreParts: partIndex < textParts.length - 1,
+      currentText: currentPart,
+      fullText: message
     });
     
   } catch (error) {

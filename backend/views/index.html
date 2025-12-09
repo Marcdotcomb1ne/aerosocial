@@ -450,6 +450,57 @@
             font-size: 0.9rem;
         }
 
+        .cinematic-continue-btn {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            color: #000;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 10003;
+            display: none;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .cinematic-continue-btn:hover {
+            background: #ffffff;
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        .cinematic-continue-btn:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .cinematic-continue-btn::after {
+            content: ' ▶';
+            margin-left: 8px;
+        }
+
+        .cinematic-part-counter {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            z-index: 10002;
+            display: none;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
         /* OVERLAY CINEMÁTICO */
         .cinematic-overlay {
             position: fixed;
@@ -872,6 +923,11 @@
         <div class="cinematic-bars top"></div>
         <div class="cinematic-bars bottom"></div>
 
+        <div class="cinematic-part-counter" id="partCounter">Parte 1 de 3</div>
+        <button class="cinematic-continue-btn" id="continueBtn" onclick="continueCinematic()">
+            Continuar
+        </button>
+
         <button class="cinematic-close" onclick="closeCinematic()">x</button>
 
         <div class="particles" id="particles"></div>
@@ -940,6 +996,15 @@
         let stats = { totalMessages: 0 };
         let isPlayingCinematic = false;
 
+        let cinematicState = {
+            fullText: '',
+            currentPart: 0,
+            totalParts: 0,
+            context: 'neutral',
+            soundtrack: '',
+            isPlaying: false
+        };
+
         marked.setOptions({
             breaks: true,
             gfm: true
@@ -971,41 +1036,69 @@
             }
         }
 
-        // Adicione este código ao seu script existente no index.html
-
         async function playCinematic(messageText) {
-            if (isPlayingCinematic) return;
+            if (cinematicState.isPlaying) return;
 
-            isPlayingCinematic = true;
+            cinematicState = {
+                fullText: messageText,
+                currentPart: 0,
+                totalParts: 0,
+                context: 'neutral',
+                soundtrack: '',
+                isPlaying: true
+            };
+
+            await startCinematicPart(messageText, 0);
+        }
+
+        async function startCinematicPart(fullMessage, partIndex) {
             const overlay = document.getElementById('cinematicOverlay');
             const text = document.getElementById('cinematicText');
             const subtitles = document.getElementById('cinematicSubtitles');
             const loading = document.getElementById('cinematicLoading');
             const contextImage = document.getElementById('contextImage');
             const photoCredit = document.getElementById('photoCredit');
+            const continueBtn = document.getElementById('continueBtn');
+            const partCounter = document.getElementById('partCounter');
 
             overlay.classList.add('active');
             text.textContent = '';
-            subtitles.textContent = 'Gerando narração...';
+            subtitles.textContent = partIndex === 0 ? 'Gerando narração...' : 'Continuando...';
             loading.style.display = 'flex';
-            contextImage.style.display = 'none';
-            photoCredit.style.display = 'none';
+            continueBtn.style.display = 'none';
 
-            createParticles();
+            if (partIndex === 0) {
+                contextImage.style.display = 'none';
+                photoCredit.style.display = 'none';
+                createParticles();
+            }
 
             try {
                 const response = await fetch('/api/ai/cinematic', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: messageText })
+                    body: JSON.stringify({
+                        message: fullMessage,
+                        partIndex: partIndex
+                    })
                 });
 
                 const data = await response.json();
                 if (!data.success) throw new Error(data.error);
 
-                // Carregar imagem contextual se disponível
-                if (data.contextImage && data.contextImage.url) {
-                    // Pré-carregar imagem
+                cinematicState.currentPart = data.currentPart;
+                cinematicState.totalParts = data.totalParts;
+                cinematicState.context = data.context;
+                cinematicState.soundtrack = data.soundtrack;
+
+                if (data.totalParts > 1) {
+                    partCounter.textContent = `Parte ${data.currentPart + 1} de ${data.totalParts}`;
+                    partCounter.style.display = 'block';
+                } else {
+                    partCounter.style.display = 'none';
+                }
+
+                if (partIndex === 0 && data.contextImage && data.contextImage.url) {
                     const img = new Image();
                     img.onload = () => {
                         contextImage.src = data.contextImage.url;
@@ -1014,7 +1107,6 @@
                     };
                     img.src = data.contextImage.url;
 
-                    // Mostrar créditos do fotógrafo
                     if (data.contextImage.photographer) {
                         photoCredit.innerHTML = `Photo by <a href="${data.contextImage.photographerUrl}" target="_blank" rel="noopener">${data.contextImage.photographer}</a> on Unsplash`;
                         photoCredit.style.display = 'block';
@@ -1022,19 +1114,21 @@
                 }
 
                 loading.style.display = 'none';
-                text.textContent = messageText;
+                text.textContent = data.currentText;
                 text.style.opacity = '0.1';
                 text.style.fontSize = '1rem';
 
-                const soundtrack = document.getElementById('soundtrackAudio');
-                soundtrack.volume = 0.09;
-                soundtrack.src = data.soundtrack;
-                soundtrack.play().catch(() => console.log('Soundtrack indisponível'));
+                if (partIndex === 0) {
+                    const soundtrack = document.getElementById('soundtrackAudio');
+                    soundtrack.volume = 0.09;
+                    soundtrack.src = data.soundtrack;
+                    soundtrack.play().catch(() => console.log('Soundtrack indisponível'));
+                }
 
                 const narrator = document.getElementById('narratorAudio');
                 narrator.src = `data:audio/mp3;base64,${data.audioBase64}`;
 
-                const words = messageText.split(' ');
+                const words = data.currentText.split(' ');
                 let currentIndex = -1;
 
                 await new Promise(resolve => {
@@ -1042,9 +1136,9 @@
                     narrator.load();
                 });
 
-                console.log('Carregado! Duração:', narrator.duration);
+                console.log(`Parte ${data.currentPart + 1}/${data.totalParts} - Duração:`, narrator.duration);
 
-                const LEAD_TIME = 1.010;
+                const LEAD_TIME = 0.20;
 
                 const syncLoop = () => {
                     if (narrator.paused || narrator.ended) return;
@@ -1070,8 +1164,6 @@
                                 return `<span style="color: #666; font-size: 1rem;">${word}</span>`;
                             }
                         }).join(' ');
-
-                        console.log(`${narrator.currentTime.toFixed(2)}s -> "${words[currentIndex]}"`);
                     }
 
                     requestAnimationFrame(syncLoop);
@@ -1084,9 +1176,15 @@
                 };
 
                 narrator.onended = () => {
-                    console.log('FIM!');
-                    subtitles.textContent = 'Fim';
-                    setTimeout(closeCinematic, 2000);
+                    console.log('FIM da parte!');
+
+                    if (data.hasMoreParts) {
+                        subtitles.textContent = 'Fim da parte ' + (data.currentPart + 1);
+                        continueBtn.style.display = 'block';
+                    } else {
+                        subtitles.textContent = 'Fim';
+                        setTimeout(closeCinematic, 2000);
+                    }
                 };
 
                 await narrator.play();
@@ -1099,12 +1197,24 @@
             }
         }
 
+        function continueCinematic() {
+            const nextPart = cinematicState.currentPart + 1;
+
+            if (nextPart < cinematicState.totalParts) {
+                startCinematicPart(cinematicState.fullText, nextPart);
+            } else {
+                closeCinematic();
+            }
+        }
+
         function closeCinematic() {
             const overlay = document.getElementById('cinematicOverlay');
             const narrator = document.getElementById('narratorAudio');
             const soundtrack = document.getElementById('soundtrackAudio');
             const contextImage = document.getElementById('contextImage');
             const photoCredit = document.getElementById('photoCredit');
+            const continueBtn = document.getElementById('continueBtn');
+            const partCounter = document.getElementById('partCounter');
 
             narrator.pause();
             soundtrack.pause();
@@ -1114,30 +1224,16 @@
             overlay.classList.remove('active');
             contextImage.style.display = 'none';
             photoCredit.style.display = 'none';
-            isPlayingCinematic = false;
+            continueBtn.style.display = 'none';
+            partCounter.style.display = 'none';
 
-            document.getElementById('particles').innerHTML = '';
-        }
+            cinematicState.isPlaying = false;
 
-        function closeCinematic() {
-            const overlay = document.getElementById('cinematicOverlay');
-            const narrator = document.getElementById('narratorAudio');
-            const soundtrack = document.getElementById('soundtrackAudio');
-
-            narrator.pause();
-            soundtrack.pause();
-            narrator.currentTime = 0;
-            soundtrack.currentTime = 0;
-
-            overlay.classList.remove('active');
-            isPlayingCinematic = false;
-
-            // Limpar partículas
             document.getElementById('particles').innerHTML = '';
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isPlayingCinematic) {
+            if (e.key === 'Escape' && cinematicState.isPlaying) {
                 closeCinematic();
             }
         });
@@ -1246,15 +1342,15 @@
         function renderConversationsList() {
             const list = document.getElementById('conversationsList');
             list.innerHTML = conversations.map(conv => `
-                <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}" 
-                     onclick="switchConversation('${conv.id}')">
-                    <div class="conversation-title">${escapeHtml(conv.title)}</div>
-                    <div class="conversation-date">${formatDate(conv.createdAt)}</div>
-                    <button class="delete-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}')">
-                        x
-                    </button>
-                </div>
-            `).join('');
+        <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}" 
+             onclick="switchConversation('${conv.id}')">
+            <div class="conversation-title">${escapeHtml(conv.title)}</div>
+            <div class="conversation-date">${formatDate(conv.createdAt)}</div>
+            <button class="delete-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}')">
+                x
+            </button>
+        </div>
+    `).join('');
         }
 
         function addMessage(text, sender, isEvent = false) {
@@ -1283,12 +1379,12 @@
             chatWindow.innerHTML = messages.map((msg, index) => {
                 if (msg.sender === 'loading') {
                     return `
-                        <div class="message-wrapper bot">
-                            <div class="message-container">
-                                <div class="message loading">${escapeHtml(msg.text)}</div>
-                            </div>
-                        </div>
-                    `;
+                <div class="message-wrapper bot">
+                    <div class="message-container">
+                        <div class="message loading">${escapeHtml(msg.text)}</div>
+                    </div>
+                </div>
+            `;
                 }
 
                 const messageContent = msg.sender === 'bot'
@@ -1300,14 +1396,14 @@
                     : '';
 
                 return `
-                    <div class="message-wrapper ${msg.sender}">
-                        <div class="message-container">
-                            <div class="message ${msg.sender}">${messageContent}</div>
-                            ${playButton}
-                            <div class="message-time">${formatTime(msg.timestamp)}</div>
-                        </div>
-                    </div>
-                `;
+            <div class="message-wrapper ${msg.sender}">
+                <div class="message-container">
+                    <div class="message ${msg.sender}">${messageContent}</div>
+                    ${playButton}
+                    <div class="message-time">${formatTime(msg.timestamp)}</div>
+                </div>
+            </div>
+        `;
             }).join('');
 
             chatWindow.scrollTop = chatWindow.scrollHeight;
