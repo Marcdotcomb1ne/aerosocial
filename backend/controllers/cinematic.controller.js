@@ -74,7 +74,7 @@ export const generateElevenLabsAudio = async (req, res) => {
     
     const VOICE_ID = 'Zk0wRqIFBWGMu2lIk7hw';
     
-    console.log('🎙️ Gerando áudio com ElevenLabs SDK...');
+    console.log('Gerando áudio com ElevenLabs SDK...');
     
     const audio = await elevenlabs.textToSpeech.convert(
       VOICE_ID,
@@ -97,7 +97,7 @@ export const generateElevenLabsAudio = async (req, res) => {
     const audioBuffer = Buffer.concat(chunks);
     const audioBase64 = audioBuffer.toString('base64');
     
-    console.log('✅ Áudio gerado com sucesso!');
+    console.log('Áudio gerado com sucesso!');
     
     return res.json({
       success: true,
@@ -108,7 +108,7 @@ export const generateElevenLabsAudio = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro ElevenLabs:', error);
+    console.error('Erro ElevenLabs:', error);
     return res.status(500).json({ 
       error: error.message,
       details: 'Verifique se a API key do ElevenLabs está configurada corretamente'
