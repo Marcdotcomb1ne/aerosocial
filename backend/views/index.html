@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -263,6 +264,7 @@
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -396,8 +398,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .message-time {
@@ -409,6 +418,268 @@
 
         .message-wrapper.user .message-time {
             text-align: right;
+        }
+
+        .cinematic-play-btn {
+            background: black;
+            border: none;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .cinematic-play-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .cinematic-play-btn:active {
+            transform: translateY(0);
+        }
+
+        .cinematic-play-btn::before {
+            content: '▶';
+            font-size: 0.9rem;
+        }
+
+        /* OVERLAY CINEMÁTICO */
+        .cinematic-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.98);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            animation: fadeInOverlay 0.5s ease;
+        }
+
+        @keyframes fadeInOverlay {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .cinematic-overlay.active {
+            display: flex;
+        }
+
+        /* Barras Cinematográficas (Letterbox) */
+        .cinematic-bars {
+            position: absolute;
+            width: 100%;
+            height: 80px;
+            background: #000;
+            z-index: 10000;
+        }
+
+        .cinematic-bars.top {
+            top: 0;
+            animation: slideDownBar 0.8s ease;
+        }
+
+        .cinematic-bars.bottom {
+            bottom: 0;
+            animation: slideUpBar 0.8s ease;
+        }
+
+        @keyframes slideDownBar {
+            from {
+                transform: translateY(-100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUpBar {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        /* Conteúdo Cinemático */
+        .cinematic-content {
+            max-width: 900px;
+            width: 90%;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            z-index: 10001;
+            animation: fadeInContent 1s ease 0.5s both;
+        }
+
+        @keyframes fadeInContent {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .cinematic-text {
+            font-size: 1.5rem;
+            line-height: 1.8;
+            color: #ffffff;
+            text-shadow: 2px 2px 20px rgba(0, 0, 0, 0.8);
+            margin-bottom: 40px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        /* Legendas Sincronizadas */
+        .cinematic-subtitles {
+            font-size: 1.2rem;
+            color: #ffffff;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 8px;
+            display: inline-block;
+            min-width: 300px;
+            min-height: 50px;
+            animation: subtitlePulse 0.3s ease;
+        }
+
+        @keyframes subtitlePulse {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Botão Fechar */
+        .cinematic-close {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cinematic-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: rotate(90deg);
+        }
+
+        /* Partículas */
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 10000;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 10s infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0) translateX(0);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        /* Loading Animation */
+        .cinematic-loading {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .loading-dot {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            animation: loadingDot 1.4s infinite;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes loadingDot {
+
+            0%,
+            80%,
+            100% {
+                opacity: 0;
+                transform: scale(0);
+            }
+
+            40% {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .chat-input-area {
@@ -499,10 +770,44 @@
             .message-container {
                 max-width: 85%;
             }
+
+            .cinematic-text {
+                font-size: 1.2rem;
+            }
+
+            .cinematic-subtitles {
+                font-size: 1rem;
+                padding: 10px 20px;
+            }
         }
     </style>
 </head>
+
 <body>
+    <!-- OVERLAY CINEMÁTICO -->
+    <div class="cinematic-overlay" id="cinematicOverlay">
+        <div class="cinematic-bars top"></div>
+        <div class="cinematic-bars bottom"></div>
+
+        <button class="cinematic-close" onclick="closeCinematic()">x</button>
+
+        <div class="particles" id="particles"></div>
+
+        <div class="cinematic-content">
+            <div class="cinematic-text" id="cinematicText"></div>
+            <div class="cinematic-subtitles" id="cinematicSubtitles"></div>
+            <div class="cinematic-loading" id="cinematicLoading">
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Players -->
+    <audio id="narratorAudio" preload="auto"></audio>
+    <audio id="soundtrackAudio" preload="auto" loop></audio>
+
     <div class="container">
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
@@ -536,13 +841,8 @@
 
             <div class="chat-input-area">
                 <div class="input-container">
-                    <input 
-                        type="text" 
-                        id="messageInput" 
-                        class="message-input" 
-                        placeholder="Digite sua mensagem..."
-                        autocomplete="off"
-                    >
+                    <input type="text" id="messageInput" class="message-input" placeholder="Digite sua mensagem..."
+                        autocomplete="off">
                     <button class="send-btn" id="sendBtn" onclick="sendMessage()">→</button>
                 </div>
             </div>
@@ -554,12 +854,168 @@
         let currentConversationId = null;
         let isStreaming = false;
         let stats = { totalMessages: 0 };
+        let isPlayingCinematic = false;
 
-        // Configurar marked para renderização de Markdown
         marked.setOptions({
             breaks: true,
             gfm: true
         });
+
+        // ==========================================
+        // SISTEMA CINEMÁTICO
+        // ==========================================
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            container.innerHTML = '';
+
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.width = Math.random() * 4 + 2 + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 10 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        async function playCinematic(messageText) {
+            if (isPlayingCinematic) return;
+
+            isPlayingCinematic = true;
+            const overlay = document.getElementById('cinematicOverlay');
+            const text = document.getElementById('cinematicText');
+            const subtitles = document.getElementById('cinematicSubtitles');
+            const loading = document.getElementById('cinematicLoading');
+            const badge = document.getElementById('contextBadge');
+
+            // Mostrar overlay com loading
+            overlay.classList.add('active');
+            text.textContent = '';
+            subtitles.textContent = 'Gerando narração cinemática...';
+            loading.style.display = 'flex';
+
+            createParticles();
+
+            try {
+                console.log('🎬 Iniciando modo cinemático...');
+                
+                const response = await fetch('/api/ai/cinematic/elevenlabs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: messageText })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Falha ao gerar áudio');
+                }
+
+                console.log('✅ Áudio gerado! Contexto:', data.context);
+
+                // Esconder loading
+                loading.style.display = 'none';
+                
+                // Mostrar texto completo
+                text.textContent = messageText;
+                subtitles.textContent = 'Preparando...';
+
+                // Badge de contexto
+                badge.textContent = data.context.toUpperCase();
+                badge.className = `context-badge ${data.context}`;
+
+                // Carregar trilha sonora
+                const soundtrack = document.getElementById('soundtrackAudio');
+                soundtrack.src = data.soundtrack;
+                soundtrack.volume = 0.3;
+                await soundtrack.play().catch(e => console.log('Soundtrack falhou:', e));
+
+                // Preparar narrador
+                const narrator = document.getElementById('narratorAudio');
+                narrator.src = `data:audio/mp3;base64,${data.audioBase64}`;
+
+                // Variáveis para legendas
+                const words = messageText.split(' ');
+                let currentWordIndex = 0;
+                
+                // Atualizar legendas palavra por palavra
+                narrator.addEventListener('timeupdate', function updateSubtitles() {
+                    const progress = narrator.currentTime / narrator.duration;
+                    const targetWordIndex = Math.floor(words.length * progress);
+
+                    // Só atualizar quando mudar de palavra
+                    if (targetWordIndex !== currentWordIndex && targetWordIndex < words.length) {
+                        currentWordIndex = targetWordIndex;
+                        
+                        // Mostrar janela de 5-7 palavras centrada na atual
+                        const windowSize = 6;
+                        const start = Math.max(0, currentWordIndex - Math.floor(windowSize / 2));
+                        const end = Math.min(words.length, start + windowSize);
+                        
+                        const visibleWords = words.slice(start, end);
+                        const currentInWindow = currentWordIndex - start;
+                        
+                        // Destacar palavra atual
+                        subtitles.innerHTML = visibleWords.map((word, idx) => 
+                            idx === currentInWindow 
+                                ? `<span style="color: #fff; font-weight: 700;">${word}</span>`
+                                : `<span style="color: #aaa;">${word}</span>`
+                        ).join(' ');
+                    }
+                }, { passive: true });
+
+                // Quando terminar
+                narrator.addEventListener('ended', function () {
+                    subtitles.textContent = '✨ Fim';
+                    setTimeout(() => {
+                        closeCinematic();
+                    }, 2000);
+                }, { once: true });
+
+                // Aguardar carregamento do áudio
+                console.log('🔊 Iniciando reprodução...');
+                await narrator.play();
+                console.log('▶️ Tocando!');
+
+            } catch (error) {
+                console.error('❌ Erro ao tocar cinemático:', error);
+                loading.style.display = 'none';
+                subtitles.textContent = '⚠️ Erro ao carregar. Verifique a API.';
+                subtitles.style.color = '#ff4444';
+                
+                setTimeout(() => {
+                    closeCinematic();
+                }, 3000);
+            }
+        }
+
+        function closeCinematic() {
+            const overlay = document.getElementById('cinematicOverlay');
+            const narrator = document.getElementById('narratorAudio');
+            const soundtrack = document.getElementById('soundtrackAudio');
+
+            soundtrack.volume = 0;
+            narrator.pause();
+            soundtrack.pause();
+            narrator.currentTime = 0;
+            soundtrack.currentTime = 0;
+
+            overlay.classList.remove('active');
+            isPlayingCinematic = false;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isPlayingCinematic) {
+                closeCinematic();
+            }
+        });
+
+        // ==========================================
+        // SISTEMA DE CHAT ORIGINAL
+        // ==========================================
 
         function init() {
             loadFromStorage();
@@ -591,7 +1047,7 @@
         function loadFromStorage() {
             const savedConv = localStorage.getItem('conversations');
             const savedStats = localStorage.getItem('stats');
-            
+
             if (savedConv) conversations = JSON.parse(savedConv);
             if (savedStats) stats = JSON.parse(savedStats);
         }
@@ -626,7 +1082,7 @@
                 renderMessages(conv.messages);
                 renderConversationsList();
             }
-            
+
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.add('hidden');
             }
@@ -634,7 +1090,7 @@
 
         function deleteConversation(id) {
             conversations = conversations.filter(c => c.id !== id);
-            
+
             if (currentConversationId === id) {
                 if (conversations.length > 0) {
                     switchConversation(conversations[0].id);
@@ -642,22 +1098,22 @@
                     createNewConversation();
                 }
             }
-            
+
             renderConversationsList();
             saveToStorage();
         }
 
         function updateConversationTitle(convId, firstMessage) {
-            const title = firstMessage.length > 30 
-                ? firstMessage.substring(0, 30) + '...' 
+            const title = firstMessage.length > 30
+                ? firstMessage.substring(0, 30) + '...'
                 : firstMessage;
-            
-            conversations = conversations.map(c => 
-                c.id === convId && c.title === 'Nova Conversa' 
-                    ? { ...c, title } 
+
+            conversations = conversations.map(c =>
+                c.id === convId && c.title === 'Nova Conversa'
+                    ? { ...c, title }
                     : c
             );
-            
+
             renderConversationsList();
             saveToStorage();
         }
@@ -670,7 +1126,7 @@
                     <div class="conversation-title">${escapeHtml(conv.title)}</div>
                     <div class="conversation-date">${formatDate(conv.createdAt)}</div>
                     <button class="delete-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}')">
-                        ×
+                        x
                     </button>
                 </div>
             `).join('');
@@ -699,7 +1155,7 @@
 
         function renderMessages(messages) {
             const chatWindow = document.getElementById('chatWindow');
-            chatWindow.innerHTML = messages.map(msg => {
+            chatWindow.innerHTML = messages.map((msg, index) => {
                 if (msg.sender === 'loading') {
                     return `
                         <div class="message-wrapper bot">
@@ -710,14 +1166,19 @@
                     `;
                 }
 
-                const messageContent = msg.sender === 'bot' 
+                const messageContent = msg.sender === 'bot'
                     ? marked.parse(msg.text)
                     : escapeHtml(msg.text);
+
+                const playButton = msg.sender === 'bot' && msg.text !== 'Olá...'
+                    ? `<button class="cinematic-play-btn" onclick="playCinematicByIndex(${index})">Modo Cinemático</button>`
+                    : '';
 
                 return `
                     <div class="message-wrapper ${msg.sender}">
                         <div class="message-container">
                             <div class="message ${msg.sender}">${messageContent}</div>
+                            ${playButton}
                             <div class="message-time">${formatTime(msg.timestamp)}</div>
                         </div>
                     </div>
@@ -725,6 +1186,13 @@
             }).join('');
 
             chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function playCinematicByIndex(messageIndex) {
+            const conv = conversations.find(c => c.id === currentConversationId);
+            if (conv && conv.messages[messageIndex]) {
+                playCinematic(conv.messages[messageIndex].text);
+            }
         }
 
         async function sendMessage() {
@@ -737,7 +1205,7 @@
             if (!userMessage) return;
 
             addMessage(userMessage, 'user');
-            
+
             const conv = conversations.find(c => c.id === currentConversationId);
             if (conv && conv.messages.filter(m => m.sender === 'user').length === 1) {
                 updateConversationTitle(currentConversationId, userMessage);
@@ -761,7 +1229,7 @@
 
             try {
                 const conv = conversations.find(c => c.id === currentConversationId);
-                
+
                 const response = await fetch('/api/ai/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -835,9 +1303,9 @@
         }
 
         function formatTime(timestamp) {
-            return new Date(timestamp).toLocaleTimeString('pt-BR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+            return new Date(timestamp).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
             });
         }
 
@@ -865,4 +1333,5 @@
         init();
     </script>
 </body>
+
 </html>

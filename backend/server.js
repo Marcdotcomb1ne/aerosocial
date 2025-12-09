@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pageRoutes from './routes/pages.routes.js';
 import aiRouter from './routes/ai.routes.js';
+import cinematicRouter from './routes/cinematic.routes.js';
 
 const app = express();
 const PORT = 3001;
@@ -21,6 +22,7 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 // Configuração das Rotas
 app.use(pageRoutes);
 app.use('/api/ai', aiRouter);
+app.use('/api/ai', cinematicRouter);
 
 app.listen(PORT, () => {
     console.log(`✅  Server is running in http://localhost:${PORT}`);
