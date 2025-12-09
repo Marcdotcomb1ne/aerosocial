@@ -924,7 +924,7 @@
                 }
 
                 const soundtrack = document.getElementById('soundtrackAudio');
-                soundtrack.volume = 0.25;
+                soundtrack.volume = 0.09;
                 soundtrack.src = data.soundtrack;
                 soundtrack.play().catch(() => console.log('Soundtrack indisponível'));
 
@@ -942,7 +942,7 @@
 
                 console.log('Carregado! Duração:', narrator.duration);
 
-                const LEAD_TIME = 1;
+                const LEAD_TIME = 1.010;
 
                 const syncLoop = () => {
                     if (narrator.paused || narrator.ended) return;

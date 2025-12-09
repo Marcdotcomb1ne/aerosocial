@@ -2,19 +2,16 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
 const SOUNDTRACKS = {
   action: [
-    'https://cdn.pixabay.com/audio/2022/03/10/audio_d1718372d8.mp3',
-    'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3'
+    '/assets/soundtrack/lutarpeloquemeu.mp3'
   ],
   drama: [
-    'https://cdn.pixabay.com/audio/2022/03/10/audio_2b49c7935b.mp3',
-    'https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3'
+    '/assets/soundtrack/unlimitedsky.mp3'
   ],
   suspense: [
-    'https://cdn.pixabay.com/audio/2022/03/24/audio_c8c6e5d2ff.mp3',
-    'https://cdn.pixabay.com/audio/2021/12/13/audio_0ac3e0524a.mp3'
+    '/assets/soundtrack/umbomlugar.mp3'
   ],
   neutral: [
-    'https://cdn.pixabay.com/audio/2022/01/18/audio_7a6b1028dc.mp3'
+    '/assets/soundtrack/shecouldnt.mp3'
   ]
 };
 
