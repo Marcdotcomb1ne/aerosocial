@@ -15,6 +15,21 @@ const SOUNDTRACKS = {
   ]
 };
 
+const IMAGE_KEYWORDS = {
+  action: [
+    'action', 'fight', 'brazil favela', 'urban warfare', 'gun battle'
+  ],
+  drama: [
+    'dark alley', 'rainy street', 'crying'
+  ],
+  suspense: [
+    'mysterious room', 'empty office'
+  ],
+  neutral: [
+    'soccer pitch', 'soccer training center'
+  ]
+};
+
 function detectContext(message) {
   const lower = message.toLowerCase();
   
@@ -49,9 +64,53 @@ function selectSoundtrack(context) {
   return tracks[Math.floor(Math.random() * tracks.length)];
 }
 
+function selectImageKeyword(context) {
+  const keywords = IMAGE_KEYWORDS[context] || IMAGE_KEYWORDS.neutral;
+  return keywords[Math.floor(Math.random() * keywords.length)];
+}
+
 function estimateDuration(text) {
   const words = text.split(/\s+/).length;
   return Math.ceil(words / 2.5);
+}
+
+async function getContextualImage(context) {
+  try {
+    const keyword = selectImageKeyword(context);
+    const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
+    
+    if (!UNSPLASH_ACCESS_KEY) {
+      console.warn('Unsplash API key não configurada');
+      return null;
+    }
+    
+    const response = await fetch(
+      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keyword)}&orientation=landscape&content_filter=high`,
+      {
+        headers: {
+          'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      console.error('Erro ao buscar imagem do Unsplash:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    return {
+      url: data.urls.regular,
+      blur: data.urls.small,
+      photographer: data.user.name,
+      photographerUrl: data.user.links.html,
+      downloadLocation: data.links.download_location
+    };
+  } catch (error) {
+    console.error('Erro ao buscar imagem contextual:', error);
+    return null;
+  }
 }
 
 export const generateElevenLabsAudio = async (req, res) => {
@@ -64,6 +123,8 @@ export const generateElevenLabsAudio = async (req, res) => {
     
     const context = detectContext(message);
     const soundtrack = selectSoundtrack(context);
+    
+    const contextImage = await getContextualImage(context);
     
     const elevenlabs = new ElevenLabsClient({
       apiKey: process.env.ELEVENLABS_API_KEY
@@ -101,7 +162,8 @@ export const generateElevenLabsAudio = async (req, res) => {
       audioBase64,
       soundtrack,
       context,
-      duration: estimateDuration(message)
+      duration: estimateDuration(message),
+      contextImage
     });
     
   } catch (error) {
@@ -123,6 +185,8 @@ export const generateCinematicAudio = async (req, res) => {
     
     const context = detectContext(message);
     const soundtrack = selectSoundtrack(context);
+    
+    const contextImage = await getContextualImage(context);
     
     const ttsResponse = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
       method: 'POST',
@@ -156,7 +220,8 @@ export const generateCinematicAudio = async (req, res) => {
       audioBase64: ttsData.audioContent,
       soundtrack,
       context,
-      duration: estimateDuration(message)
+      duration: estimateDuration(message),
+      contextImage
     });
     
   } catch (error) {

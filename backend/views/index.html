@@ -481,6 +481,84 @@
             display: flex;
         }
 
+        .cinematic-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9998;
+            overflow: hidden;
+        }
+
+        .cinematic-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 0.7) 0%,
+                    rgba(0, 0, 0, 0.4) 40%,
+                    rgba(0, 0, 0, 0.4) 60%,
+                    rgba(0, 0, 0, 0.7) 100%);
+            z-index: 2;
+        }
+
+        .cinematic-background img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: cover;
+            z-index: 1;
+            filter: blur(0px) brightness(0.6);
+            animation: slowZoom 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes slowZoom {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+        }
+
+        .photo-credit {
+            position: absolute;
+            bottom: 100px;
+            right: 30px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            z-index: 10002;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .photo-credit a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .photo-credit a:hover {
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .photo-credit {
+                font-size: 0.65rem;
+                bottom: 90px;
+                right: 15px;
+            }
+        }
+
         /* Barras Cinematográficas (Letterbox) */
         .cinematic-bars {
             position: absolute;
@@ -786,6 +864,11 @@
 <body>
     <!-- OVERLAY CINEMÁTICO -->
     <div class="cinematic-overlay" id="cinematicOverlay">
+
+        <div class="cinematic-background" id="cinematicBackground">
+            <img id="contextImage" src="" alt="Contexto visual" style="display: none;">
+        </div>
+
         <div class="cinematic-bars top"></div>
         <div class="cinematic-bars bottom"></div>
 
@@ -802,6 +885,7 @@
                 <div class="loading-dot"></div>
             </div>
         </div>
+        <div class="photo-credit" id="photoCredit" style="display: none;"></div>
     </div>
 
     <!-- Audio Players -->
@@ -887,6 +971,8 @@
             }
         }
 
+        // Adicione este código ao seu script existente no index.html
+
         async function playCinematic(messageText) {
             if (isPlayingCinematic) return;
 
@@ -895,12 +981,15 @@
             const text = document.getElementById('cinematicText');
             const subtitles = document.getElementById('cinematicSubtitles');
             const loading = document.getElementById('cinematicLoading');
-            const badge = document.getElementById('contextBadge');
+            const contextImage = document.getElementById('contextImage');
+            const photoCredit = document.getElementById('photoCredit');
 
             overlay.classList.add('active');
             text.textContent = '';
             subtitles.textContent = 'Gerando narração...';
             loading.style.display = 'flex';
+            contextImage.style.display = 'none';
+            photoCredit.style.display = 'none';
 
             createParticles();
 
@@ -914,15 +1003,28 @@
                 const data = await response.json();
                 if (!data.success) throw new Error(data.error);
 
+                // Carregar imagem contextual se disponível
+                if (data.contextImage && data.contextImage.url) {
+                    // Pré-carregar imagem
+                    const img = new Image();
+                    img.onload = () => {
+                        contextImage.src = data.contextImage.url;
+                        contextImage.style.display = 'block';
+                        contextImage.style.animation = 'fadeIn 1s ease';
+                    };
+                    img.src = data.contextImage.url;
+
+                    // Mostrar créditos do fotógrafo
+                    if (data.contextImage.photographer) {
+                        photoCredit.innerHTML = `Photo by <a href="${data.contextImage.photographerUrl}" target="_blank" rel="noopener">${data.contextImage.photographer}</a> on Unsplash`;
+                        photoCredit.style.display = 'block';
+                    }
+                }
+
                 loading.style.display = 'none';
                 text.textContent = messageText;
                 text.style.opacity = '0.1';
                 text.style.fontSize = '1rem';
-
-                if (badge) {
-                    badge.textContent = data.context.toUpperCase();
-                    badge.className = `context-badge ${data.context}`;
-                }
 
                 const soundtrack = document.getElementById('soundtrackAudio');
                 soundtrack.volume = 0.09;
@@ -935,7 +1037,6 @@
                 const words = messageText.split(' ');
                 let currentIndex = -1;
 
-                // Esperar carregar
                 await new Promise(resolve => {
                     narrator.onloadedmetadata = resolve;
                     narrator.load();
@@ -976,7 +1077,6 @@
                     requestAnimationFrame(syncLoop);
                 };
 
-                // Começar loop quando tocar
                 narrator.onplay = () => {
                     console.log('TOCANDO! Iniciando sync...');
                     subtitles.textContent = '';
@@ -989,15 +1089,34 @@
                     setTimeout(closeCinematic, 2000);
                 };
 
-                // TOCAR
                 await narrator.play();
 
             } catch (error) {
-                console.error('PORRA ERRO:', error);
+                console.error('Erro:', error);
                 loading.style.display = 'none';
-                subtitles.textContent = 'Eita porra' + error.message;
+                subtitles.textContent = 'Erro: ' + error.message;
                 setTimeout(closeCinematic, 3000);
             }
+        }
+
+        function closeCinematic() {
+            const overlay = document.getElementById('cinematicOverlay');
+            const narrator = document.getElementById('narratorAudio');
+            const soundtrack = document.getElementById('soundtrackAudio');
+            const contextImage = document.getElementById('contextImage');
+            const photoCredit = document.getElementById('photoCredit');
+
+            narrator.pause();
+            soundtrack.pause();
+            narrator.currentTime = 0;
+            soundtrack.currentTime = 0;
+
+            overlay.classList.remove('active');
+            contextImage.style.display = 'none';
+            photoCredit.style.display = 'none';
+            isPlayingCinematic = false;
+
+            document.getElementById('particles').innerHTML = '';
         }
 
         function closeCinematic() {
