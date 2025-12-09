@@ -8,7 +8,7 @@ const SOUNDTRACKS = {
 };
 
 const IMAGE_KEYWORDS = {
-  action: ['action', 'fight', 'brazil favela', 'urban warfare', 'gun battle'],
+  action: ['battle between soccer players', 'brazil stadium', 'brazil favela', 'urban warfare', 'gun battle'],
   drama: ['dark alley', 'rainy street', 'crying'],
   suspense: ['mysterious room', 'empty office'],
   neutral: ['soccer pitch', 'soccer training center']
@@ -148,7 +148,6 @@ export const generateElevenLabsAudio = async (req, res) => {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
     }
     
-    // Divide o texto em partes
     const textParts = splitTextIntoParts(message);
     const currentPart = textParts[partIndex];
     
