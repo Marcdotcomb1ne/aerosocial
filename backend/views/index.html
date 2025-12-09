@@ -544,6 +544,7 @@
         }
 
         .cinematic-text {
+            display: none;
             font-size: 1.5rem;
             line-height: 1.8;
             color: #ffffff;
@@ -726,7 +727,7 @@
 
         .particle {
             position: absolute;
-            background: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 167, 3, 0.486);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -904,7 +905,7 @@
             createParticles();
 
             try {
-                const response = await fetch('/api/ai/cinematic/elevenlabs', {
+                const response = await fetch('/api/ai/cinematic', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: messageText })
