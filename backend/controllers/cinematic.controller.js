@@ -1,14 +1,14 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
 const SOUNDTRACKS = {
-  action: ['/assets/soundtrack/lutarpeloquemeu.mp3'],
+  action: ['/assets/soundtrack/lutarpeloquemeu.mp3', '/assets/soundtrack/aplace4myhead.wav'],
   drama: ['/assets/soundtrack/unlimitedsky.mp3'],
   suspense: ['/assets/soundtrack/umbomlugar.mp3'],
   neutral: ['/assets/soundtrack/shecouldnt.mp3']
 };
 
 const IMAGE_KEYWORDS = {
-  action: ['battle between soccer players', 'brazil stadium', 'brazil favela', 'urban warfare', 'gun battle'],
+  action: ['battle between soccer players', 'brazil stadium', 'brazil favela', 'urban warfare'],
   drama: ['dark alley', 'rainy street', 'crying'],
   suspense: ['mysterious room', 'empty office'],
   neutral: ['soccer pitch', 'soccer training center']
