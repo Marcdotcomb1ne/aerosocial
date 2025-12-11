@@ -7,7 +7,8 @@
     <title>Aero Social</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap"
+        rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <style>
         * {
@@ -50,6 +51,7 @@
                 opacity: 0;
                 transform: translateY(-30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -69,6 +71,7 @@
                 opacity: 0;
                 transform: scale(0.5);
             }
+
             to {
                 opacity: 1;
                 transform: scale(1);
@@ -93,6 +96,7 @@
                 opacity: 0;
                 transform: translateY(30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -111,6 +115,7 @@
             from {
                 width: 0;
             }
+
             to {
                 width: 100px;
             }
@@ -120,6 +125,7 @@
             from {
                 opacity: 1;
             }
+
             to {
                 opacity: 0;
             }
@@ -1043,7 +1049,7 @@
 <body>
     <!-- OVERLAY CINEMÁTICO -->
     <div class="cinematic-overlay" id="cinematicOverlay">
-        
+
         <!-- TELA DE EPISÓDIO -->
         <div class="episode-screen" id="episodeScreen">
             <div class="episode-presenter">Aero Social presents:</div>
@@ -1173,12 +1179,10 @@
             }
         }
 
-        async function playCinematic(messageText) {
+        async function playCinematic(messageText, episodeNumber) {
             if (cinematicState.isPlaying) return;
 
-            // Contar o número de mensagens da IA na conversa atual
-            const conv = conversations.find(c => c.id === currentConversationId);
-            const botMessagesCount = conv ? conv.messages.filter(m => m.sender === 'bot').length : 1;
+            const finalEpisodeNum = episodeNumber || 1;
 
             cinematicState = {
                 fullText: messageText,
@@ -1187,10 +1191,10 @@
                 context: 'neutral',
                 soundtrack: '',
                 isPlaying: true,
-                episodeNumber: botMessagesCount
+                episodeNumber: finalEpisodeNum
             };
 
-            await startCinematicPart(messageText, 0, botMessagesCount);
+            await startCinematicPart(messageText, 0, finalEpisodeNum);
         }
 
         async function startCinematicPart(fullMessage, partIndex, episodeNumber) {
@@ -1243,14 +1247,14 @@
                     episodeNumberEl.textContent = `EP. ${episodeNumber.toString().padStart(2, '0')}`;
                     episodeTitleEl.textContent = data.episodeTitle || 'Novo Capítulo';
                     episodeTitleEl.style.opacity = '1';
-                    
+
                     episodeScreen.classList.add('active');
-                    
+
                     const soundtrack = document.getElementById('soundtrackAudio');
-                    soundtrack.volume = 0.09;
+                    soundtrack.volume = 0.50;
                     soundtrack.src = data.soundtrack;
                     soundtrack.play().catch(() => console.log('Soundtrack indisponível'));
-                    
+
                     if (data.contextImage && data.contextImage.url) {
                         const img = new Image();
                         img.onload = () => {
@@ -1265,13 +1269,23 @@
                             photoCredit.style.display = 'block';
                         }
                     }
-                    
+
                     await new Promise(resolve => setTimeout(resolve, 5000));
-                    
+
                     episodeScreen.style.animation = 'fadeOut 1s ease';
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     episodeScreen.classList.remove('active');
                     episodeScreen.style.animation = '';
+
+                    const fadeAudio = setInterval(() => {
+                        if (soundtrack.volume > 0.1) {
+                            soundtrack.volume -= 0.05;
+                        } else {
+                            soundtrack.volume = 0.09;
+                            clearInterval(fadeAudio);
+                        }
+                    }, 100);
+
                 }
 
                 if (data.totalParts > 1) {
@@ -1594,7 +1608,9 @@
         function playCinematicByIndex(messageIndex) {
             const conv = conversations.find(c => c.id === currentConversationId);
             if (conv && conv.messages[messageIndex]) {
-                playCinematic(conv.messages[messageIndex].text);
+                const messagesUpToHere = conv.messages.slice(0, messageIndex + 1);
+                const episodeNumber = (messagesUpToHere.filter(m => m.sender === 'bot').length) - 1;
+                playCinematic(conv.messages[messageIndex].text, episodeNumber);
             }
         }
 
