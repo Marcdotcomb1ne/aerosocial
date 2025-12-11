@@ -7,13 +7,140 @@
     <title>Aero Social</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        .episode-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10004;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 1s ease;
+        }
+
+        .episode-screen.active {
+            display: flex;
+        }
+
+        .episode-presenter {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 60px;
+            animation: fadeInDown 1.5s ease;
+            font-weight: 300;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .episode-number {
+            font-size: 8rem;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 30px;
+            animation: scaleIn 1s ease 0.5s both;
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .episode-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-align: center;
+            max-width: 800px;
+            padding: 0 40px;
+            line-height: 1.4;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: fadeInUp 1.5s ease 1s both;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .episode-divider {
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ffffff, transparent);
+            margin: 40px 0;
+            animation: expandWidth 1s ease 0.8s both;
+        }
+
+        @keyframes expandWidth {
+            from {
+                width: 0;
+            }
+            to {
+                width: 100px;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        /* Responsivo para tela de episódio */
+        @media (max-width: 768px) {
+            .episode-presenter {
+                font-size: 0.9rem;
+                margin-bottom: 40px;
+            }
+
+            .episode-number {
+                font-size: 5rem;
+                margin-bottom: 20px;
+            }
+
+            .episode-title {
+                font-size: 1.5rem;
+                padding: 0 20px;
+            }
         }
 
         body {
@@ -916,6 +1043,14 @@
 <body>
     <!-- OVERLAY CINEMÁTICO -->
     <div class="cinematic-overlay" id="cinematicOverlay">
+        
+        <!-- TELA DE EPISÓDIO -->
+        <div class="episode-screen" id="episodeScreen">
+            <div class="episode-presenter">Aero Social presents:</div>
+            <div class="episode-number" id="episodeNumber">01</div>
+            <div class="episode-divider"></div>
+            <div class="episode-title" id="episodeTitle">...</div>
+        </div>
 
         <div class="cinematic-background" id="cinematicBackground">
             <img id="contextImage" src="" alt="Contexto visual" style="display: none;">
@@ -929,7 +1064,7 @@
             Continuar
         </button>
 
-        <button class="cinematic-close" onclick="closeCinematic()">x</button>
+        <button class="cinematic-close" onclick="closeCinematic()">×</button>
 
         <div class="particles" id="particles"></div>
 
@@ -1003,7 +1138,8 @@
             totalParts: 0,
             context: 'neutral',
             soundtrack: '',
-            isPlaying: false
+            isPlaying: false,
+            episodeNumber: 1
         };
 
         marked.setOptions({
@@ -1040,20 +1176,28 @@
         async function playCinematic(messageText) {
             if (cinematicState.isPlaying) return;
 
+            // Contar o número de mensagens da IA na conversa atual
+            const conv = conversations.find(c => c.id === currentConversationId);
+            const botMessagesCount = conv ? conv.messages.filter(m => m.sender === 'bot').length : 1;
+
             cinematicState = {
                 fullText: messageText,
                 currentPart: 0,
                 totalParts: 0,
                 context: 'neutral',
                 soundtrack: '',
-                isPlaying: true
+                isPlaying: true,
+                episodeNumber: botMessagesCount
             };
 
-            await startCinematicPart(messageText, 0);
+            await startCinematicPart(messageText, 0, botMessagesCount);
         }
 
-        async function startCinematicPart(fullMessage, partIndex) {
+        async function startCinematicPart(fullMessage, partIndex, episodeNumber) {
             const overlay = document.getElementById('cinematicOverlay');
+            const episodeScreen = document.getElementById('episodeScreen');
+            const episodeNumberEl = document.getElementById('episodeNumber');
+            const episodeTitleEl = document.getElementById('episodeTitle');
             const text = document.getElementById('cinematicText');
             const subtitles = document.getElementById('cinematicSubtitles');
             const loading = document.getElementById('cinematicLoading');
@@ -1080,7 +1224,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: fullMessage,
-                        partIndex: partIndex
+                        partIndex: partIndex,
+                        episodeNumber: episodeNumber
                     })
                 });
 
@@ -1092,6 +1237,43 @@
                 cinematicState.context = data.context;
                 cinematicState.soundtrack = data.soundtrack;
 
+                loading.style.display = 'none';
+
+                if (partIndex === 0) {
+                    episodeNumberEl.textContent = `EP. ${episodeNumber.toString().padStart(2, '0')}`;
+                    episodeTitleEl.textContent = data.episodeTitle || 'Novo Capítulo';
+                    episodeTitleEl.style.opacity = '1';
+                    
+                    episodeScreen.classList.add('active');
+                    
+                    const soundtrack = document.getElementById('soundtrackAudio');
+                    soundtrack.volume = 0.09;
+                    soundtrack.src = data.soundtrack;
+                    soundtrack.play().catch(() => console.log('Soundtrack indisponível'));
+                    
+                    if (data.contextImage && data.contextImage.url) {
+                        const img = new Image();
+                        img.onload = () => {
+                            contextImage.src = data.contextImage.url;
+                            contextImage.style.display = 'block';
+                            contextImage.style.animation = 'fadeIn 1s ease';
+                        };
+                        img.src = data.contextImage.url;
+
+                        if (data.contextImage.photographer) {
+                            photoCredit.innerHTML = `Photo by <a href="${data.contextImage.photographerUrl}" target="_blank" rel="noopener">${data.contextImage.photographer}</a> on Unsplash`;
+                            photoCredit.style.display = 'block';
+                        }
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    
+                    episodeScreen.style.animation = 'fadeOut 1s ease';
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    episodeScreen.classList.remove('active');
+                    episodeScreen.style.animation = '';
+                }
+
                 if (data.totalParts > 1) {
                     partCounter.textContent = `Parte ${data.currentPart + 1} de ${data.totalParts}`;
                     partCounter.style.display = 'block';
@@ -1099,37 +1281,14 @@
                     partCounter.style.display = 'none';
                 }
 
-                if (partIndex === 0 && data.contextImage && data.contextImage.url) {
-                    const img = new Image();
-                    img.onload = () => {
-                        contextImage.src = data.contextImage.url;
-                        contextImage.style.display = 'block';
-                        contextImage.style.animation = 'fadeIn 1s ease';
-                    };
-                    img.src = data.contextImage.url;
-
-                    if (data.contextImage.photographer) {
-                        photoCredit.innerHTML = `Photo by <a href="${data.contextImage.photographerUrl}" target="_blank" rel="noopener">${data.contextImage.photographer}</a> on Unsplash`;
-                        photoCredit.style.display = 'block';
-                    }
-                }
-
-                loading.style.display = 'none';
                 text.textContent = data.currentText;
                 text.style.opacity = '0.1';
                 text.style.fontSize = '1rem';
 
-                if (partIndex === 0) {
-                    const soundtrack = document.getElementById('soundtrackAudio');
-                    soundtrack.volume = 0.09;
-                    soundtrack.src = data.soundtrack;
-                    soundtrack.play().catch(() => console.log('Soundtrack indisponível'));
-                }
-
+                // Iniciar narração com Web Speech API
                 if ('speechSynthesis' in window) {
                     const utterance = new SpeechSynthesisUtterance(data.currentText);
 
-                    // Configurar voz em português
                     const voices = speechSynthesis.getVoices();
                     const ptVoice = voices.find(v => v.lang.startsWith('pt-BR')) ||
                         voices.find(v => v.lang.startsWith('pt'));
@@ -1141,10 +1300,7 @@
                     utterance.volume = 1.0;
 
                     const words = data.currentText.split(' ');
-                    let wordQueue = [];
-                    const windowSize = 7;
 
-                    // Evento BOUNDARY - dispara em cada palavra!
                     utterance.onboundary = (event) => {
                         if (event.name === 'word') {
                             const charIndex = event.charIndex;
@@ -1152,6 +1308,7 @@
                             const currentWordIndex = spokenText.split(' ').length - 1;
 
                             if (currentWordIndex >= 0 && currentWordIndex < words.length) {
+                                const windowSize = 7;
                                 const start = Math.max(0, currentWordIndex - Math.floor(windowSize / 2));
                                 const end = Math.min(words.length, start + windowSize);
                                 const visibleWords = words.slice(start, end);
@@ -1190,7 +1347,6 @@
                         subtitles.textContent = 'Erro na narração';
                     };
 
-                    // Garantir que as vozes estejam carregadas
                     if (speechSynthesis.getVoices().length === 0) {
                         speechSynthesis.onvoiceschanged = () => {
                             const voices = speechSynthesis.getVoices();
@@ -1204,66 +1360,15 @@
                     }
 
                 } else {
-                    // Fallback caso Web Speech API não esteja disponível
-                    console.warn('Web Speech API não disponível, usando áudio do backend');
-                    const narrator = document.getElementById('narratorAudio');
-                    narrator.src = `data:audio/mp3;base64,${data.audioBase64}`;
-
-                    const words = data.currentText.split(' ');
-                    let currentIndex = -1;
-
-                    await new Promise(resolve => {
-                        narrator.onloadedmetadata = resolve;
-                        narrator.load();
-                    });
-
-                    const LEAD_TIME = 0.20;
-                    const syncLoop = () => {
-                        if (narrator.paused || narrator.ended) return;
-
-                        const adjustedTime = narrator.currentTime + LEAD_TIME;
-                        const progress = adjustedTime / narrator.duration;
-                        const newIndex = Math.floor(words.length * progress);
-
-                        if (newIndex !== currentIndex && newIndex < words.length && newIndex >= 0) {
-                            currentIndex = newIndex;
-
-                            const windowSize = 7;
-                            const start = Math.max(0, currentIndex - Math.floor(windowSize / 2));
-                            const end = Math.min(words.length, start + windowSize);
-
-                            const visibleWords = words.slice(start, end);
-                            const currentInWindow = currentIndex - start;
-
-                            subtitles.innerHTML = visibleWords.map((word, idx) => {
-                                if (idx === currentInWindow) {
-                                    return `<span style="color: #fff; font-weight: 900; font-size: 1.4rem; text-shadow: 0 0 15px rgba(255,255,255,0.9); transition: all 0.1s ease;">${word}</span>`;
-                                } else {
-                                    return `<span style="color: #666; font-size: 1rem;">${word}</span>`;
-                                }
-                            }).join(' ');
-                        }
-
-                        requestAnimationFrame(syncLoop);
-                    };
-
-                    narrator.onplay = () => syncLoop();
-                    narrator.onended = () => {
-                        if (data.hasMoreParts) {
-                            subtitles.textContent = 'Fim da parte ' + (data.currentPart + 1);
-                            continueBtn.style.display = 'block';
-                        } else {
-                            subtitles.textContent = 'Fim';
-                            setTimeout(closeCinematic, 2000);
-                        }
-                    };
-
-                    await narrator.play();
+                    console.warn('Web Speech API não disponível');
+                    subtitles.textContent = 'Narração não disponível neste navegador';
+                    setTimeout(closeCinematic, 3000);
                 }
 
             } catch (error) {
                 console.error('Erro:', error);
                 loading.style.display = 'none';
+                episodeScreen.classList.remove('active');
                 subtitles.textContent = 'Erro: ' + error.message;
                 setTimeout(closeCinematic, 3000);
             }
@@ -1273,7 +1378,7 @@
             const nextPart = cinematicState.currentPart + 1;
 
             if (nextPart < cinematicState.totalParts) {
-                startCinematicPart(cinematicState.fullText, nextPart);
+                startCinematicPart(cinematicState.fullText, nextPart, cinematicState.episodeNumber);
             } else {
                 closeCinematic();
             }
@@ -1284,6 +1389,7 @@
                 speechSynthesis.cancel();
             }
             const overlay = document.getElementById('cinematicOverlay');
+            const episodeScreen = document.getElementById('episodeScreen');
             const narrator = document.getElementById('narratorAudio');
             const soundtrack = document.getElementById('soundtrackAudio');
             const contextImage = document.getElementById('contextImage');
@@ -1297,6 +1403,7 @@
             soundtrack.currentTime = 0;
 
             overlay.classList.remove('active');
+            episodeScreen.classList.remove('active');
             contextImage.style.display = 'none';
             photoCredit.style.display = 'none';
             continueBtn.style.display = 'none';
@@ -1422,7 +1529,7 @@
             <div class="conversation-title">${escapeHtml(conv.title)}</div>
             <div class="conversation-date">${formatDate(conv.createdAt)}</div>
             <button class="delete-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}')">
-                x
+                ×
             </button>
         </div>
     `).join('');

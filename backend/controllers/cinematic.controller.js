@@ -1,4 +1,5 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
+import OpenAI from 'openai';
 
 const SOUNDTRACKS = {
   action: ['/assets/soundtrack/lutarpeloquemeu.mp3', '/assets/soundtrack/aplace4myhead.wav'],
@@ -140,9 +141,44 @@ async function getContextualImage(context) {
   }
 }
 
+async function generateEpisodeTitle(message) {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      console.warn('OpenAI API Key não configurada, usando título genérico');
+      return 'Novo Capítulo';
+    }
+
+    const openai = new OpenAI({ apiKey });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um especialista em criar títulos dramáticos e impactantes para episódios de séries. Crie um título curto (máximo 6 palavras) e cinematográfico que resuma a essência da cena descrita. Use português brasileiro. Seja dramático, criativo e impactante.'
+        },
+        {
+          role: 'user',
+          content: `Crie um título cinematográfico para este momento da história:\n\n${message.substring(0, 500)}`
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 50
+    });
+
+    const title = response.choices[0]?.message?.content?.trim() || 'Novo Capítulo';
+    return title.replace(/['"]/g, '');
+  } catch (error) {
+    console.error('Erro ao gerar título do episódio:', error);
+    return 'Novo Capítulo';
+  }
+}
+
 export const generateElevenLabsAudio = async (req, res) => {
   try {
-    const { message, partIndex = 0 } = req.body;
+    const { message, partIndex = 0, episodeNumber = 1 } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
@@ -155,6 +191,8 @@ export const generateElevenLabsAudio = async (req, res) => {
     const soundtrack = selectSoundtrack(context);
     
     const contextImage = partIndex === 0 ? await getContextualImage(context) : null;
+    
+    const episodeTitle = partIndex === 0 ? await generateEpisodeTitle(message) : null;
     
     const elevenlabs = new ElevenLabsClient({
       apiKey: process.env.ELEVENLABS_API_KEY
@@ -194,6 +232,8 @@ export const generateElevenLabsAudio = async (req, res) => {
       context,
       duration: estimateDuration(currentPart),
       contextImage,
+      episodeTitle,
+      episodeNumber,
       currentPart: partIndex,
       totalParts: textParts.length,
       hasMoreParts: partIndex < textParts.length - 1,
@@ -212,7 +252,7 @@ export const generateElevenLabsAudio = async (req, res) => {
 
 export const generateCinematicAudio = async (req, res) => {
   try {
-    const { message, partIndex = 0, voiceId = 'pt-BR-Wavenet-B' } = req.body;
+    const { message, partIndex = 0, episodeNumber = 1, voiceId = 'pt-BR-Wavenet-B' } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
@@ -225,6 +265,8 @@ export const generateCinematicAudio = async (req, res) => {
     const soundtrack = selectSoundtrack(context);
     
     const contextImage = partIndex === 0 ? await getContextualImage(context) : null;
+    
+    const episodeTitle = partIndex === 0 ? await generateEpisodeTitle(message) : null;
     
     console.log(`Gerando áudio Google TTS - Parte ${partIndex + 1} de ${textParts.length}...`);
     
@@ -262,6 +304,8 @@ export const generateCinematicAudio = async (req, res) => {
       context,
       duration: estimateDuration(currentPart),
       contextImage,
+      episodeTitle,
+      episodeNumber,
       currentPart: partIndex,
       totalParts: textParts.length,
       hasMoreParts: partIndex < textParts.length - 1,
