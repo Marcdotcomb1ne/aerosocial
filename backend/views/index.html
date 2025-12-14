@@ -588,9 +588,9 @@
             bottom: 120px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(17, 17, 17, 0.9);
             border: none;
-            color: #000;
+            color: #d8d8d8;
             padding: 15px 40px;
             border-radius: 30px;
             font-size: 1rem;
@@ -602,20 +602,6 @@
             font-family: 'Inter', sans-serif;
             text-transform: uppercase;
             letter-spacing: 1px;
-        }
-
-        .cinematic-continue-btn:hover {
-            background: #ffffff;
-            transform: translateX(-50%) scale(1.05);
-        }
-
-        .cinematic-continue-btn:active {
-            transform: translateX(-50%) scale(0.95);
-        }
-
-        .cinematic-continue-btn::after {
-            content: ' ▶';
-            margin-left: 8px;
         }
 
         .cinematic-part-counter {
@@ -817,17 +803,26 @@
         }
 
         .cinematic-subtitles {
-            font-size: 1.5rem;
-            color: #ffffff;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px 40px;
-            border-radius: 12px;
+            font-size: 1.8rem;
+            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 600;
+            color: #eeeeee;
+            padding: 30px 50px;
+            border-radius: 16px;
             display: inline-block;
             min-width: 400px;
             min-height: 80px;
-            animation: subtitlePulse 0.3s ease;
-            line-height: 1.8;
+            line-height: 1.9;
             z-index: 10003;
+            opacity: 0;
+            transition: opacity 0.8s ease-in;
+            text-align: center;
+            text-shadow:
+                0 2px 4px rgba(0, 0, 0, 0.9),
+                0 4px 8px rgba(0, 0, 0, 0.8),
+                0 8px 16px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            letter-spacing: 0.5px;
         }
 
         @keyframes subtitlePulse {
@@ -1070,7 +1065,7 @@
             Continuar
         </button>
 
-        <button class="cinematic-close" onclick="closeCinematic()">×</button>
+        <button class="cinematic-close" onclick="closeCinematic()">x</button>
 
         <div class="particles" id="particles"></div>
 
@@ -1145,7 +1140,8 @@
             context: 'neutral',
             soundtrack: '',
             isPlaying: false,
-            episodeNumber: 1
+            episodeNumber: 1,
+            useElevenLabs: true
         };
 
         marked.setOptions({
@@ -1191,7 +1187,8 @@
                 context: 'neutral',
                 soundtrack: '',
                 isPlaying: true,
-                episodeNumber: finalEpisodeNum
+                episodeNumber: finalEpisodeNum,
+                useElevenLabs: true
             };
 
             await startCinematicPart(messageText, 0, finalEpisodeNum);
@@ -1209,6 +1206,7 @@
             const photoCredit = document.getElementById('photoCredit');
             const continueBtn = document.getElementById('continueBtn');
             const partCounter = document.getElementById('partCounter');
+            const narratorAudio = document.getElementById('narratorAudio');
 
             overlay.classList.add('active');
             text.textContent = '';
@@ -1223,7 +1221,10 @@
             }
 
             try {
-                const response = await fetch('/api/ai/cinematic', {
+                // Tenta ElevenLabs primeiro, se falhar usa Google TTS
+                const endpoint = cinematicState.useElevenLabs ? '/api/ai/cinematic/elevenlabs' : '/api/ai/cinematic';
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1234,6 +1235,14 @@
                 });
 
                 const data = await response.json();
+
+                // Se ElevenLabs falhar, tenta Google TTS
+                if (!data.success && cinematicState.useElevenLabs) {
+                    console.log('ElevenLabs falhou, tentando Google TTS...');
+                    cinematicState.useElevenLabs = false;
+                    return startCinematicPart(fullMessage, partIndex, episodeNumber);
+                }
+
                 if (!data.success) throw new Error(data.error);
 
                 cinematicState.currentPart = data.currentPart;
@@ -1243,6 +1252,7 @@
 
                 loading.style.display = 'none';
 
+                // Tela de episódio (apenas na primeira parte)
                 if (partIndex === 0) {
                     episodeNumberEl.textContent = `EP. ${episodeNumber.toString().padStart(2, '0')}`;
                     episodeTitleEl.textContent = data.episodeTitle || 'Novo Capítulo';
@@ -1285,9 +1295,9 @@
                             clearInterval(fadeAudio);
                         }
                     }, 100);
-
                 }
 
+                // Atualiza contador de partes
                 if (data.totalParts > 1) {
                     partCounter.textContent = `Parte ${data.currentPart + 1} de ${data.totalParts}`;
                     partCounter.style.display = 'block';
@@ -1295,96 +1305,62 @@
                     partCounter.style.display = 'none';
                 }
 
-                text.textContent = data.currentText;
-                text.style.opacity = '0.1';
-                text.style.fontSize = '1rem';
+                subtitles.style.opacity = '0';
+                subtitles.textContent = data.currentText;
+                subtitles.style.transition = 'opacity 0.8s ease-in';
 
-                // Iniciar narração com Web Speech API
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(data.currentText);
+                setTimeout(() => {
+                    subtitles.style.opacity = '1';
+                }, 100);
 
-                    const voices = speechSynthesis.getVoices();
-                    const ptVoice = voices.find(v => v.lang.startsWith('pt-BR') && v.name.includes('Maria')) ||
-                        voices.find(v => v.lang.startsWith('pt-BR'));
-                    if (ptVoice) utterance.voice = ptVoice;
+                narratorAudio.src = `data:audio/mp3;base64,${data.audioBase64}`;
 
-                    utterance.lang = 'pt-BR';
-                    utterance.rate = 1.5;
-                    utterance.pitch = 0.9;
-                    utterance.volume = 1.0;
+                narratorAudio.onended = () => {
+                    console.log('Áudio terminou');
 
-                    const words = data.currentText.split(' ');
-
-                    utterance.onboundary = (event) => {
-                        if (event.name === 'word') {
-                            const charIndex = event.charIndex;
-                            const spokenText = data.currentText.substring(0, charIndex);
-                            const currentWordIndex = spokenText.split(' ').length - 1;
-
-                            if (currentWordIndex >= 0 && currentWordIndex < words.length) {
-                                const windowSize = 7;
-                                const start = Math.max(0, currentWordIndex - Math.floor(windowSize / 2));
-                                const end = Math.min(words.length, start + windowSize);
-                                const visibleWords = words.slice(start, end);
-                                const currentInWindow = currentWordIndex - start;
-
-                                subtitles.innerHTML = visibleWords.map((word, idx) => {
-                                    if (idx === currentInWindow) {
-                                        return `<span style="color: #fff; font-weight: 900; font-size: 1.4rem; text-shadow: 0 0 15px rgba(255,255,255,0.9); transition: all 0.1s ease;">${word}</span>`;
-                                    } else {
-                                        return `<span style="color: #666; font-size: 1rem;">${word}</span>`;
-                                    }
-                                }).join(' ');
-                            }
-                        }
-                    };
-
-                    utterance.onstart = () => {
-                        console.log('Web Speech API: Iniciando narração...');
-                        subtitles.textContent = '';
-                    };
-
-                    utterance.onend = () => {
-                        console.log('FIM da parte!');
-
-                        if (data.hasMoreParts) {
-                            subtitles.textContent = 'Fim da parte ' + (data.currentPart + 1);
-                            continueBtn.style.display = 'block';
-                        } else {
-                            subtitles.textContent = 'Fim';
-                            setTimeout(closeCinematic, 2000);
-                        }
-                    };
-
-                    utterance.onerror = (event) => {
-                        console.error('Erro no Web Speech:', event);
-                        subtitles.textContent = 'Erro na narração';
-                    };
-
-                    if (speechSynthesis.getVoices().length === 0) {
-                        speechSynthesis.onvoiceschanged = () => {
-                            const voices = speechSynthesis.getVoices();
-                            const ptVoice = voices.find(v => v.lang.startsWith('pt-BR') && v.name.includes('Maria')) ||
-                                voices.find(v => v.lang.startsWith('pt'));
-                            if (ptVoice) utterance.voice = ptVoice;
-                            speechSynthesis.speak(utterance);
-                        };
+                    if (data.hasMoreParts) {
+                        continueBtn.style.display = 'block';
                     } else {
-                        speechSynthesis.speak(utterance);
-                    }
+                        subtitles.style.transition = 'opacity 0.5s ease-out';
+                        subtitles.style.opacity = '0';
 
-                } else {
-                    console.warn('Web Speech API não disponível');
-                    subtitles.textContent = 'Narração não disponível neste navegador';
-                    setTimeout(closeCinematic, 3000);
-                }
+                        setTimeout(() => {
+                            subtitles.textContent = 'Fim';
+                            subtitles.style.opacity = '1';
+                            setTimeout(closeCinematic, 2000);
+                        }, 500);
+                    }
+                };
+
+                narratorAudio.onerror = (e) => {
+                    console.error('Erro ao carregar áudio:', e);
+                    subtitles.textContent = 'Erro ao carregar áudio';
+
+                    // Se ElevenLabs falhar no áudio, tenta Google TTS
+                    if (cinematicState.useElevenLabs) {
+                        console.log('Erro no áudio ElevenLabs, tentando Google TTS...');
+                        cinematicState.useElevenLabs = false;
+                        startCinematicPart(fullMessage, partIndex, episodeNumber);
+                    } else {
+                        setTimeout(closeCinematic, 3000);
+                    }
+                };
+
+                await narratorAudio.play();
 
             } catch (error) {
                 console.error('Erro:', error);
                 loading.style.display = 'none';
                 episodeScreen.classList.remove('active');
                 subtitles.textContent = 'Erro: ' + error.message;
-                setTimeout(closeCinematic, 3000);
+
+                if (cinematicState.useElevenLabs) {
+                    console.log('Erro geral, tentando Google TTS...');
+                    cinematicState.useElevenLabs = false;
+                    startCinematicPart(fullMessage, partIndex, episodeNumber);
+                } else {
+                    setTimeout(closeCinematic, 3000);
+                }
             }
         }
 
@@ -1399,9 +1375,6 @@
         }
 
         function closeCinematic() {
-            if ('speechSynthesis' in window) {
-                speechSynthesis.cancel();
-            }
             const overlay = document.getElementById('cinematicOverlay');
             const episodeScreen = document.getElementById('episodeScreen');
             const narrator = document.getElementById('narratorAudio');

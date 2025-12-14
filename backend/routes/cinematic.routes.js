@@ -3,8 +3,8 @@ import { generateCinematicAudio, generateElevenLabsAudio } from '../controllers/
 
 const cinematicRouter = express.Router();
 
-cinematicRouter.post('/cinematic', generateCinematicAudio);
-
 cinematicRouter.post('/cinematic/elevenlabs', generateElevenLabsAudio);
+
+cinematicRouter.post('/cinematic', generateCinematicAudio);
 
 export default cinematicRouter;

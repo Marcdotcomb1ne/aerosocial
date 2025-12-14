@@ -61,45 +61,40 @@ function estimateDuration(text) {
   return Math.ceil(words / 2.5);
 }
 
-function splitTextIntoParts(text, maxLength = MAX_TTS_LENGTH) {
-  if (text.length <= maxLength) {
-    return [text];
+// Nova função para dividir em parágrafos ao invés de por tamanho
+function splitTextIntoParagraphs(text) {
+  // Divide por parágrafos (quebras de linha duplas ou simples)
+  const paragraphs = text.split(/\n\n+|\n/).filter(p => p.trim().length > 0);
+  
+  // Se não houver parágrafos, divide por frases
+  if (paragraphs.length <= 1) {
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    return sentences.map(s => s.trim()).filter(s => s.length > 0);
   }
-
-  const parts = [];
-  let remainingText = text;
-
-  while (remainingText.length > 0) {
-    if (remainingText.length <= maxLength) {
-      parts.push(remainingText.trim());
-      break;
+  
+  // Se algum parágrafo for muito grande (>MAX_TTS_LENGTH), divide ele
+  const finalParagraphs = [];
+  for (const para of paragraphs) {
+    if (para.length <= MAX_TTS_LENGTH) {
+      finalParagraphs.push(para.trim());
+    } else {
+      // Divide parágrafo grande por frases
+      const sentences = para.match(/[^.!?]+[.!?]+/g) || [para];
+      let currentChunk = '';
+      
+      for (const sentence of sentences) {
+        if ((currentChunk + sentence).length <= MAX_TTS_LENGTH) {
+          currentChunk += sentence;
+        } else {
+          if (currentChunk) finalParagraphs.push(currentChunk.trim());
+          currentChunk = sentence;
+        }
+      }
+      if (currentChunk) finalParagraphs.push(currentChunk.trim());
     }
-
-    let splitIndex = remainingText.lastIndexOf('. ', maxLength);
-    
-    if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
-      splitIndex = remainingText.lastIndexOf('\n', maxLength);
-    }
-    
-    if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
-      splitIndex = remainingText.lastIndexOf(', ', maxLength);
-    }
-    
-    if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
-      splitIndex = remainingText.lastIndexOf(' ', maxLength);
-    }
-    
-    if (splitIndex === -1) {
-      splitIndex = maxLength;
-    }
-
-    const part = remainingText.substring(0, splitIndex + 1).trim();
-    parts.push(part);
-    
-    remainingText = remainingText.substring(splitIndex + 1).trim();
   }
-
-  return parts;
+  
+  return finalParagraphs;
 }
 
 async function getContextualImage(context) {
@@ -184,7 +179,7 @@ export const generateElevenLabsAudio = async (req, res) => {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
     }
     
-    const textParts = splitTextIntoParts(message);
+    const textParts = splitTextIntoParagraphs(message);
     const currentPart = textParts[partIndex];
     
     const context = detectContext(message);
@@ -200,7 +195,7 @@ export const generateElevenLabsAudio = async (req, res) => {
     
     const VOICE_ID = 'Zk0wRqIFBWGMu2lIk7hw';
     
-    console.log(`Gerando áudio - Parte ${partIndex + 1} de ${textParts.length}...`);
+    console.log(`Gerando áudio ElevenLabs - Parte ${partIndex + 1} de ${textParts.length}...`);
     
     const audio = await elevenlabs.textToSpeech.convert(
       VOICE_ID,
@@ -258,7 +253,7 @@ export const generateCinematicAudio = async (req, res) => {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
     }
     
-    const textParts = splitTextIntoParts(message);
+    const textParts = splitTextIntoParagraphs(message);
     const currentPart = textParts[partIndex];
     
     const context = detectContext(message);
