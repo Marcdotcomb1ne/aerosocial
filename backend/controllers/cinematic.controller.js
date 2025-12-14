@@ -2,7 +2,7 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import OpenAI from 'openai';
 
 const SOUNDTRACKS = {
-  action: ['/assets/soundtrack/unlimitedsky.mp3', '/assets/soundtrack/aplace4myhead.wav'],
+  action: ['/assets/soundtrack/unlimitedsky.mp3', '/assets/soundtrack/nogods.mp3', '/assets/soundtrack/aplace4myhead.wav'],
   drama: ['/assets/soundtrack/lutarpeloquemeu.mp3', '/assets/soundtrack/shecouldnt.mp3'],
   suspense: ['/assets/soundtrack/umbomlugar.mp3'],
   neutral: ['/assets/soundtrack/wii.mp3', '/assets/soundtrack/ariamath.mp3']
@@ -19,11 +19,6 @@ const MAX_TTS_LENGTH = 4500;
 
 function detectContext(message) {
   const lower = message.toLowerCase();
-  
-  if (lower.includes('gol') || lower.includes('vitória') || 
-      lower.includes('campeão') || lower.includes('venceu')) {
-    return 'neutral';
-  }
   
   if (lower.includes('tiro') || lower.includes('correu') || 
       lower.includes('perseguição') || lower.includes('briga') ||
@@ -193,7 +188,7 @@ export const generateElevenLabsAudio = async (req, res) => {
       apiKey: process.env.ELEVENLABS_API_KEY
     });
     
-    const VOICE_ID = 'Zk0wRqIFBWGMu2lIk7hw';
+    const VOICE_ID = 'TzryZkieeczAsBkDJXcH';
     
     console.log(`Gerando áudio ElevenLabs - Parte ${partIndex + 1} de ${textParts.length}...`);
     
