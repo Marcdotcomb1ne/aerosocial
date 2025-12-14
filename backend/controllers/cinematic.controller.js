@@ -2,8 +2,8 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import OpenAI from 'openai';
 
 const SOUNDTRACKS = {
-  action: ['/assets/soundtrack/lutarpeloquemeu.mp3', '/assets/soundtrack/aplace4myhead.wav'],
-  drama: ['/assets/soundtrack/unlimitedsky.mp3', '/assets/soundtrack/shecouldnt.mp3'],
+  action: ['/assets/soundtrack/unlimitedsky.mp3', '/assets/soundtrack/aplace4myhead.wav'],
+  drama: ['/assets/soundtrack/lutarpeloquemeu.mp3', '/assets/soundtrack/shecouldnt.mp3'],
   suspense: ['/assets/soundtrack/umbomlugar.mp3'],
   neutral: ['/assets/soundtrack/wii.mp3', '/assets/soundtrack/ariamath.mp3']
 };

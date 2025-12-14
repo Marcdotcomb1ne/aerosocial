@@ -1304,13 +1304,13 @@
                     const utterance = new SpeechSynthesisUtterance(data.currentText);
 
                     const voices = speechSynthesis.getVoices();
-                    const ptVoice = voices.find(v => v.lang.startsWith('pt-BR')) ||
-                        voices.find(v => v.lang.startsWith('pt'));
+                    const ptVoice = voices.find(v => v.lang.startsWith('pt-BR') && v.name.includes('Maria')) ||
+                        voices.find(v => v.lang.startsWith('pt-BR'));
                     if (ptVoice) utterance.voice = ptVoice;
 
                     utterance.lang = 'pt-BR';
-                    utterance.rate = 0.85;
-                    utterance.pitch = 0.5;
+                    utterance.rate = 1.5;
+                    utterance.pitch = 0.9;
                     utterance.volume = 1.0;
 
                     const words = data.currentText.split(' ');
@@ -1364,7 +1364,7 @@
                     if (speechSynthesis.getVoices().length === 0) {
                         speechSynthesis.onvoiceschanged = () => {
                             const voices = speechSynthesis.getVoices();
-                            const ptVoice = voices.find(v => v.lang.startsWith('pt-BR')) ||
+                            const ptVoice = voices.find(v => v.lang.startsWith('pt-BR') && v.name.includes('Maria')) ||
                                 voices.find(v => v.lang.startsWith('pt'));
                             if (ptVoice) utterance.voice = ptVoice;
                             speechSynthesis.speak(utterance);
