@@ -17,6 +17,102 @@
             box-sizing: border-box;
         }
 
+        /* Modal de Senha */
+        .password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .password-modal.hidden {
+            display: none;
+        }
+
+        .password-content {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .password-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+        }
+
+        .password-subtitle {
+            font-size: 0.875rem;
+            color: #666666;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .password-input {
+            width: 100%;
+            background: #000000;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: #ffffff;
+            font-size: 0.9375rem;
+            outline: none;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+            margin-bottom: 16px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .password-input:focus {
+            border-color: #ffffff;
+        }
+
+        .password-submit {
+            width: 100%;
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 14px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .password-submit:hover {
+            background: #e6e6e6;
+        }
+
+        .password-submit:active {
+            transform: scale(0.98);
+        }
+
+        .password-error {
+            color: #ff4444;
+            font-size: 0.875rem;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .password-error.show {
+            display: block;
+        }
+
         .episode-screen {
             position: absolute;
             top: 0;
@@ -1042,6 +1138,18 @@
 </head>
 
 <body>
+    <div class="password-modal" id="passwordModal">
+        <div class="password-content">
+            <div class="password-title">Acesso Restrito</div>
+            <div class="password-subtitle">Este playground ainda está na fase de testes.<br>Para acessar, digite a
+                senha:</div>
+            <input type="password" id="passwordInput" class="password-input" placeholder="Digite a senha"
+                autocomplete="off">
+            <button class="password-submit" onclick="checkPassword()">Entrar</button>
+            <div class="password-error" id="passwordError">Senha incorreta. Tente novamente.</div>
+        </div>
+    </div>
+
     <!-- OVERLAY CINEMÁTICO -->
     <div class="cinematic-overlay" id="cinematicOverlay">
 
@@ -1127,6 +1235,52 @@
     </div>
 
     <script>
+        async function checkPassword() {
+            const input = document.getElementById('passwordInput');
+            const modal = document.getElementById('passwordModal');
+            const error = document.getElementById('passwordError');
+
+            try {
+                const response = await fetch('/verify-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: input.value })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    modal.classList.add('hidden');
+                    sessionStorage.setItem('authenticated', 'true');
+                } else {
+                    error.classList.add('show');
+                    input.value = '';
+                    input.focus();
+                    setTimeout(() => {
+                        error.classList.remove('show');
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error('Erro ao verificar senha:', err);
+                error.textContent = 'Erro ao conectar com o servidor';
+                error.classList.add('show');
+            }
+        }
+        
+        if (sessionStorage.getItem('authenticated') === 'true') {
+            document.getElementById('passwordModal').classList.add('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('passwordInput');
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    checkPassword();
+                }
+            });
+            passwordInput.focus();
+        });
+
         let conversations = [];
         let currentConversationId = null;
         let isStreaming = false;
